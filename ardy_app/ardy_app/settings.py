@@ -48,6 +48,8 @@ INSTALLED_APPS = [
     'rest_framework',
     'rest_framework.authtoken',
     'knox',
+    'channels',
+
 ]
 
 # Required for django allauth
@@ -158,3 +160,15 @@ ACCOUNT_EMAIL_VERIFICATION = 'mandatory'
 ACCOUNT_AUTHENTICATION_METHOD = 'username_email'
 ACCOUNT_USERNAME_REQUIRED = True
 LOGIN_REDIRECT_URL = '/'
+
+# Channels settings
+
+ASGI_APPLICATION = "ardy_app.asgi.application"
+CHANNEL_LAYERS = {
+    "default": {
+        "BACKEND": "channels_redis.core.RedisChannelLayer",
+        "CONFIG": {
+            "hosts": [("localhost", 6379)],
+        },
+    },
+}
