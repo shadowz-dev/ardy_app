@@ -5,104 +5,55 @@ from django.utils import timezone
 from datetime import datetime
 
 #Users Imports
-from django.contrib.auth.models import AbstractUser
+from django.contrib.auth.models import AbstractUser, Group, Permission
+from django.core.management.base import BaseCommand
+from django.contrib.contenttypes.models import ContentType
+from .models.user import *
+from .models.project import *
+from constants import *
 
-USER_TYPES = [('Customer', 'Customer'), ('Consultant', 'Consultant'),
-            ('Interior Designer', 'Interior Designer'), ('Construction', 'Construction'),
-            ('Maintainance', 'Maintainance'),('Smart_Home', 'Smart_Home')]
 
-SIGNUP_TYPE = [
-    ("Manual", "Manual"),
-    ("Google", "Google"),
-    ("Apple", "Apple"),
-]
-
-STATUS_CHOICES = [
-    ('Pending', 'Pending'),
-    ('Accepted', 'Accepted'),
-    ('In Progress', 'In Progress'),
-    ('Completed', 'Completed'),
-    ('Cancelled', 'Cancelled')
-]
-class User(AbstractUser):
-    user_type = models.CharField(max_length=50, choices=USER_TYPES)
-    email = models.EmailField(blank=False, null=False, unique=True)
-    phone_regex = RegexValidator(regex=r'^\+?1?\d{9,14}$', message="Phone number must be entered in the format : '+99999999999'. Up to 14 digits allowed.",)
-    phone = models.CharField(validators=[phone_regex], max_length=14, blank=False, null=False, unique=True)
-    signup_type = models.CharField(default="Manual", max_length=6, choices=SIGNUP_TYPE, help_text='Type of Signup.')
-
-    # Default users fields.
-    first_name = models.CharField(max_length=50, blank=True, null=True)
-    last_name = models.CharField(max_length=50, blank=True, null=True)
-    birthday = models.DateField(blank=True, null=True)
-    news_letter = models.BooleanField(default=False)
-    offers_and_discounts = models.BooleanField(default=False)
-    date_joined = models.DateTimeField(verbose_name=("date joined"), default=timezone.now)
     
+#----------------------------------------------------Start Permission Groups Model-----------------------------------------------
+class Command(BaseCommand):
+    help = 'Create default user groups and permissions'
 
-    def __str__(self):
-        return f"{self.username} - ({self.user_type})"
-    
-    # Seperate profiles for each user type
-class CustomerProfile(models.Model):
-    user = models.OneToOneField(User, on_delete=models.CASCADE)
-    budget = models.IntegerField(blank=True)
-    property_status = models.CharField(max_length=100, blank=True)
-    project_details = models.TextField(blank=True)
-    attachments = models.FileField(upload_to='customers/attachments',blank=True)
+    def handle(self, *args, **kwargs):
+        groups = {
+            'Customers': [],
+            'Consultants': ['can_submit_quotation', 'can_upload_drawings'],
+            'Construction': ['can_submit_quotation','can_update_project_phases'],
+            'InteriorDesigners': ['can_submit_quotation','can_upload_designes'],
+            'Admins': ['can_approve_users', 'can_manage_projects'],
+        }
 
-    def __str__(self):
-        return f"{self.user.username} - Customer Profile"
+        for group_name, permissions in groups.items():
+            group, created = Group.objects.get_or_create(name=group_name)
+            for perm_codename in permissions:
+                permission, _ = Permission.objects.get_or_create(
+                    name=f"Can {perm_codename.replace('-', ' ')}",
+                    content_type=ContentType.objects.get_for_model(User),
+                )
+                group.permissions.add(permission)
+            self.stdout.write(self.style.SUCCESS(f"Group '{group_name}' updated"))
+        self.stdout.write(self.style.SUCCESS("Groups and permissions set up"))
 
-class ConsultantProfile(models.Model):
-    user = models.OneToOneField(User, on_delete=models.CASCADE)
-    company_name = models.CharField(max_length=100, blank=True)
-    expertise = models.CharField(max_length=100, blank=True)
-    experience = models.IntegerField(blank=True)
-    portfolio = models.URLField(blank=True)
-    introduction = models.TextField(blank=True)
-    projects_completed = models.IntegerField(blank=True)
-    company_profile = models.FileField(upload_to='company_profiles/consultants/', blank=True)
 
-class InteriorProfile(models.Model):
-    user = models.OneToOneField(User, on_delete=models.CASCADE)
-    company_name = models.CharField(max_length=100, blank=True)
-    expertise = models.CharField(max_length=100, blank=True)
-    experience = models.IntegerField(blank=True)
-    portfolio = models.URLField(blank=True)
-    introduction = models.TextField(blank=True)
-    projects_completed = models.IntegerField(blank=True)
-    company_profile = models.FileField(upload_to='company_profiles/interiors/', blank=True)
 
-class ConstructionProfile(models.Model):
-    user = models.OneToOneField(User, on_delete=models.CASCADE)
-    company_name = models.CharField(max_length=100, blank=True)
-    expertise = models.CharField(max_length=100, blank=True)
-    experience = models.IntegerField(blank=True)
-    portfolio = models.URLField(blank=True)
-    introduction = models.TextField(blank=True)
-    projects_completed = models.IntegerField(blank=True)
-    company_profile = models.FileField(upload_to='company_profiles/constructions/', blank=True)
+class CompanyProfile(models.Model):
+    company_name = models.CharField(max_length=255)
+    owner = models.OneToOneField(User, on_delete=models.CASCADE, related_name='company')
+    employees = models.ManyToManyField(User, related_name='company_employees', blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
 
-class MaintainanceProfile(models.Model):
-    user = models.OneToOneField(User, on_delete=models.CASCADE)
-    company_name = models.CharField(max_length=100, blank=True)
-    expertise = models.CharField(max_length=100, blank=True)
-    experience = models.IntegerField(blank=True)
-    portfolio = models.URLField(blank=True)
-    introduction = models.TextField(blank=True)
-    jobs_completed = models.IntegerField(blank=True)
-    company_profile = models.FileField(upload_to='company_profiles/maintainances/', blank=True)
 
-class SmartHomeProfile(models.Model):
-    user = models.OneToOneField(User, on_delete=models.CASCADE)
-    company_name = models.CharField(max_length=100, blank=True)
-    expertise = models.CharField(max_length=100, blank=True)
-    experience = models.IntegerField(blank=True)
-    portfolio = models.URLField(blank=True)
-    introduction = models.TextField(blank=True)
-    projects_completed = models.IntegerField(blank=True)
-    company_profile = models.FileField(upload_to='company_profiles/smart_home/', blank=True)
+#----------------------------------------------------Start General Documents Model-----------------------------------------------
+class Document(models.Model):
+    file = models.FileField(upload_to='documents/')
+    uploaded_by = models.ForeignKey(User, on_delete=models.CASCADE)
+    uploaded_at = models.DateTimeField(auto_now_add=True)
+    project = models.ForeignKey('Projects', on_delete=models.CASCADE, blank=True, null=True)
+
 
 
 #----------------------------------------------------Start PhoneOTP Model-----------------------------------------------
@@ -141,52 +92,6 @@ class Subscription(models.Model):
     
 #----------------------------------------------------End Subscription Model-----------------------------------------------
 
-#----------------------------------------------------Start Projects Model-----------------------------------------------
-class LandDetail(models.Model):
-    customer = models.ForeignKey(CustomerProfile, on_delete=models.CASCADE, related_name="land_details")
-    address = models.TextField()
-    size_in_sq_ft = models.FloatField()
-    survey_number = models.CharField(max_length=100, blank=True, null=True)
-    building_type = models.CharField(max_length=100, blank=True, null=True)
-    is_approved = models.BooleanField(default=False)
-
-    def __str__(self):
-        return f"Land - {self.survey_number} (Customer: {self.customer.user.username})"
-    
-
-class Projects(models.Model):
-    customer = models.ForeignKey(CustomerProfile, on_delete=models.CASCADE, related_name="projects")
-    service_provider = models.ForeignKey(User, on_delete=models.CASCADE)
-    title = models.CharField(max_length=200, blank=True, null=True)
-    description = models.TextField(blank=True, null=True)
-    status = models.CharField(max_length=200, choices=STATUS_CHOICES, default='Pending')
-    start_date = models.DateTimeField(auto_now_add=True)
-    end_date = models.DateTimeField(blank=True, null=True)
-    current_phase = models.CharField(max_length=200, blank=True, null=True)
-
-    def __str__(self):
-        return f"Project: {self.title} with {self.service_provider} (Status: {self.status})"
-    
-    def update_status(self, new_status):
-        self.status = new_status
-        self.save()
-
-    def next_phase(self, phase_name):
-        self.current_phase = phase_name
-        self.save()
-
-
-class Quotation(models.Model):
-    project = models.ForeignKey(Projects, on_delete=models.CASCADE, related_name='quotations')
-    service_provider = models.ForeignKey(User, on_delete=models.CASCADE)
-    amount = models.DecimalField(max_digits=10, decimal_places=2)
-    submitted_at = models.DateTimeField(auto_now_add=True)
-    approved = models.BooleanField(default=False)
-
-    def __str__(self):
-        return f"Quotation for {self.project.title} - Service Provider: {self.service_provider.username}"
-
-#----------------------------------------------------End Projects Model-----------------------------------------------
 
 class Lead(models.Model):
     service_provider = models.ForeignKey(User, on_delete=models.CASCADE)
@@ -237,12 +142,20 @@ class EngagementLog(models.Model):
     
 
 
-class Message(models.Model):
-    sender = models.ForeignKey(User, on_delete=models.CASCADE, related_name='sent_messages')
-    receiver = models.ForeignKey(User, on_delete=models.CASCADE, related_name='received_messages')
-    text = models.TextField()
-    timestamp = models.DateTimeField(auto_now_add=True)
-    file = models.FileField(upload_to='messages/files/', blank=True, null=True)
 
-    def __str__(self):
-        return f"Message from {self.sender} to {self.receiver}"
+    
+
+#----------------------------------------------------Start Transactions Model-----------------------------------------------
+
+class Transaction(models.Model):
+    payer = models.ForeignKey(User, on_delete=models.CASCADE, related_name='transaction_maker')
+    payee = models.ForeignKey(User, on_delete=models.CASCADE, related_name='transaction_receiver')
+    amount = models.DecimalField(max_digits=10, decimal_places=2)
+    project = models.ForeignKey(Projects, on_delete=models.CASCADE)
+    phase = models.CharField(max_length=100)
+    status = models.CharField(max_length=50, choices=[('Pending', 'Pending'), ('Completed', 'Completed')])
+    created_at = models.DateTimeField(auto_now_add=True)
+
+#----------------------------------------------------End Transactions Model-----------------------------------------------
+
+#----------------------------------------------------Start Notifications Model-----------------------------------------------
