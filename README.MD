@@ -1,10 +1,15 @@
 ardy-app is a Project where:
 
 - There are multiple users types(Customer,Interior Designers, Consultants, Construction, Smart Home...etc).
-- Each user type other than customer can have multiple sub-users for employees.
-- Users can register and apply with additional required details for customer type.
-- Customer users are uploading and adding their land detailes to get quotation from other users types.
-- Customer will choose a consultant to start.
+- Each user type other than customer can have multiple sub-users for his company employees.
+- Customers can register and apply with additional required details for customer type.
+- Other User Types can apply for registration and apply with additional required details and approved by main app employees/admins.
+- Customer users are uploading and adding their land detailes to get quotation from different services providers (consultant, Construction company, Interior Designers...etc).
+- Customer will choose a consultant to start and get quotation for his land.
+- Customer will approve the quotation and proceed with the payment for ardy-app to get the drawings from the consultant.
+- Consultant once approved will proceed with drawings ardy-app will release the payment for the Counsultant once hand over to the customer.
+- ardy-app will suggest a construction company for the next stage for the project so customer can choose a construction company to start the construction work while following up with the phases and stages of his project.
+- payments will be made by customer for ardy-app for each phase and payment will be released to the construction company once handed over.
 - all user types other than customer can be suggested to the customer while choosing.
 - Consultant user will receive a notification and prepare initial quotation for the customer.
 - Once quotation approved from customer consultant will prepare required drawings and submit it for customer revisions.
@@ -23,7 +28,7 @@ created core model including
 
 __________________________________________________________________________________________________
 
-Remaining to be added 
+Remaining Milestones to be added 
 
 3. Land Details and Project Module
 Models:
