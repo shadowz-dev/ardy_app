@@ -4,6 +4,7 @@ from django.contrib.auth import get_user_model
 from rest_framework.exceptions import AuthenticationFailed
 from rest_framework.response import Response
 from .models import User, CustomerProfile, ConsultantProfile, InteriorProfile, ConstructionProfile, MaintainanceProfile, SmartHomeProfile
+from .models import Quotation, Projects
 
 User = get_user_model()
 class UserSerializer(serializers.ModelSerializer):
@@ -45,3 +46,11 @@ class SmartHomeProfileSerializer(serializers.ModelSerializer):
     class Meta:
         model = SmartHomeProfile
         fields = ['user','company_name','expertise','experience','portfolio','introduction','projects_completed','company_profile']
+
+
+#---------------------------------------------------Quotations Serializer --------------------------------
+
+class QuotationSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Quotation
+        fields = ['id', 'project', 'service_provider', 'stage', 'stage', 'details', 'amount', 'status', 'created_at', 'updated_at']

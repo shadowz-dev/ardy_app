@@ -8,7 +8,7 @@ from django.contrib.auth.models import AbstractUser, Group, Permission
 from django.core.management.base import BaseCommand
 from django.contrib.contenttypes.models import ContentType
 from .user import *
-from constants import *
+from ..constants import *
 
 
 
@@ -65,13 +65,17 @@ class Projects(models.Model):
 
 class Quotation(models.Model):
     project = models.ForeignKey(Projects, on_delete=models.CASCADE, related_name='quotations')
-    service_provider = models.ForeignKey(User, on_delete=models.CASCADE)
+    service_provider = models.ForeignKey(User, on_delete=models.CASCADE, related_name='quotation_providers')
+    stage = models.CharField(max_length=50, default='General')
+    details = models.TextField(null=True)
     amount = models.DecimalField(max_digits=10, decimal_places=2)
+    status = models.CharField(max_length=50, choices=STATUS_CHOICES, default='Pending')
     submitted_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now_add=True)
     approved = models.BooleanField(default=False)
 
     def __str__(self):
-        return f"Quotation for {self.project.title} - Service Provider: {self.service_provider.username}"
+        return f"Quotation {self.id} for {self.project.title} - Service Provider: {self.service_provider.username} at {self.stage}"
     
 
 class Drawing(models.Model):
@@ -88,5 +92,12 @@ class Phase(models.Model):
     description = models.TextField(blank=True, null=True)
     status = models.CharField(max_length=100, choices=STATUS_CHOICES, default='Pending')
     documents = models.ManyToManyField('Document', blank=True)
+
+
+class Document(models.Model):
+    file = models.FileField(upload_to='documents/')
+    uploaded_by = models.ForeignKey(User, on_delete=models.CASCADE)
+    uploaded_at = models.DateTimeField(auto_now_add=True)
+    project = models.ForeignKey('Projects', on_delete=models.CASCADE, blank=True, null=True)
 
 #----------------------------------------------------End Projects Model-----------------------------------------------

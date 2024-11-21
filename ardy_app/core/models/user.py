@@ -4,7 +4,7 @@ from django.core.validators import RegexValidator
 from django.utils import timezone
 from datetime import datetime
 from django.contrib.auth.models import AbstractUser
-from constants import *
+from ..constants import *
 
 
 class User(AbstractUser):

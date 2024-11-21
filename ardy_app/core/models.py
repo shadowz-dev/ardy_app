@@ -10,7 +10,7 @@ from django.core.management.base import BaseCommand
 from django.contrib.contenttypes.models import ContentType
 from .models.user import *
 from .models.project import *
-from constants import *
+from .constants import *
 
 
     
@@ -48,11 +48,7 @@ class CompanyProfile(models.Model):
 
 
 #----------------------------------------------------Start General Documents Model-----------------------------------------------
-class Document(models.Model):
-    file = models.FileField(upload_to='documents/')
-    uploaded_by = models.ForeignKey(User, on_delete=models.CASCADE)
-    uploaded_at = models.DateTimeField(auto_now_add=True)
-    project = models.ForeignKey('Projects', on_delete=models.CASCADE, blank=True, null=True)
+
 
 
 

@@ -2,9 +2,9 @@ from django.db import models
 from django.core.validators import RegexValidator
 from django.utils import timezone
 from django.contrib.auth.models import AbstractUser
-from constants import *
-from user import *
-from project import *
+from ..constants import *
+from .user import *
+from .project import *
 
 class Message(models.Model):
     sender = models.ForeignKey(User, on_delete=models.CASCADE, related_name='sent_messages')

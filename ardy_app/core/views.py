@@ -1,8 +1,9 @@
+# core/views.py
 from rest_framework import generics
-from .models import User, CustomerProfile, ConsultantProfile, InteriorProfile, ConstructionProfile, MaintainanceProfile, SmartHomeProfile
-from .serializers import UserSerializer, CustomerProfileSerializer, ConsultantProfileSerializer, InteriorProfileSerializer, ConstructionProfileSerializer, MaintainanceProfileSerializer, SmartHomeProfileSerializer
+from .models import *
+from .serializers import *
 from rest_framework.response import Response
-from .permission import IsCustomer, IsConsultant, IsConstruction, IsInterior, IsSmartHome, IsMaintainance
+from .permission import *
 from knox.models import AuthToken
 from knox.views import LoginView as knoxLoginView
 from rest_framework import permissions
@@ -82,3 +83,29 @@ class LoginAPI(knoxLoginView):
         user = serializer.validated_data['user']
         login(request, user)
         return super(LoginAPI, self).post(request, format=None)
+    
+#----------------------------------------------------------------Quotations Views----------------------------------------------------
+
+class QuotationCreateView(generics.CreateAPIView):
+    queryset = Quotation.objects.all()
+    serializer_class = QuotationSerializer
+    permission_classes = [permissions.IsAuthenticated, IsServiceProvider]
+
+class QuotationListView(generics.ListAPIView):
+    queryset = Quotation.objects.all()
+    serializer_class = QuotationSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+class QuotationUpdateView(generics.UpdateAPIView):
+    queryset = Quotation.objects.all()
+    serializer_class = QuotationSerializer
+    permission_classes = [permissions.IsAuthenticated, IsServiceProvider]
+
+class QuotationApprovalView(generics.UpdateAPIView):
+    queryset = Quotation.objects.all()
+    serializer_class = QuotationSerializer
+    permission_classes = [permissions.IsAuthenticated, IsCustomer]
+
+    def perform_update(self, serializer):
+        serializer.save(status=self.request.data.get('status'))
+        

@@ -16,6 +16,8 @@ ardy-app is a Project where:
 - Chat option between each customer and other user types shall be available as p2p communication.
 - once finished customer can select the constcution company for the next step and so on.
 
+used matching sqlite3.dll for python version from  https://code.djangoproject.com/wiki/JSON1Extension to allow using of sqlite3 db with Jsonfields.
+
 
 __________________________________________________________________________________________________
 
@@ -43,7 +45,7 @@ Permissions:
 Restrict view access so only customers can create projects, and others can only view or act based on their role.
 4. Quotation Management Module
 Models:
-Define a Quotation model linked to Project and the Consultant.
+Define a Quotation model linked to Project and the Other Services providers such as Interior Designer, Construction Company,Consultant ...etc.
 Track fields like status (pending, approved, rejected).
 Serializers and Views:
 Create serializers and views for Quotation creation and approval.
