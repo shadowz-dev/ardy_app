@@ -133,3 +133,37 @@ class DocumentUploadView(generics.CreateAPIView):
     queryset = Document.objects.all()
     serializer_class = DocumentSerializer
     permission_classes = [permissions.IsAuthenticated]
+
+
+#----------------------------------------------------------------Subscription Views----------------------------------------------------
+class SubscriptionPlanListView(generics.ListAPIView):
+    queryset = SubscriptionPlan.objects.filter(is_active=True)
+    serializer_class = SubscriptionPlanSerializer
+
+class SubscribeToPlanView(generics.CreateAPIView):
+    serializer_class = UserSubscriptionSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def perform_create(self, serializer):
+        user = self.request.user
+        plan = serializer.validated_data('plan')
+
+        if plan.user_type == 'Customer' and user.user_type != 'Customer':
+            raise serializers.ValidationError("This plan is for customers only.")
+        if plan.user_type == 'Service Provider' and user.user_type == 'Customer':
+            raise serializers.ValidationError("This plan is for service providers only.")
+        
+        if hasattr(user, 'subscription') and user.subscription.is_active:
+            user.subscription.is_active = False
+            user.subscription.save()
+
+        serializer.save(user=user, is_active=True)
+
+from django.http import JsonResponse
+from django.utils.deprecation import MiddlewareMixin
+
+class SubscriptionMiddleware(MiddlewareMixin):
+    def process_request(self, request):
+        user = request.user
+        if user.is_authenticated and hasattr(user, 'subscription') and not user.subscription.is_active:
+            return JsonResponse({"error": "Your subscription has expired. Please renew your subscription."}, status=403)

@@ -27,3 +27,9 @@ class IsSmartHome(BasePermission):
 class IsServiceProvider(BasePermission):
     def has_permission(self, request, view):
         return request.user.is_authenticated() and request.user.user_type in ['Consultant','Interior Designer', 'Construction','Maintainance','Smart Home']
+    
+
+class IsPremiumUser(BasePermission):
+    def has_permission(self, request, view):
+        user = request.user
+        return user.is_authenticated and hasattr(user, 'subscription') and user.subscription.plan.name in ['Premium', 'VIP']

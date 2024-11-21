@@ -63,14 +63,14 @@ Views:
 Implement views to allow consultants to upload drawings and customers to submit revision requests.
 Permissions:
 Restrict access to allow consultants to upload and customers to request revisions.
-6. p2p Communication Module (Chat)
+6. p2p Communication app (Chat)
 Models:
-Define ChatRoom and Message models for handling p2p communication between users.
+Define ChatRoom and Message models for handling p2p communication between customers and service providers.
 Views:
 Use Django Channels for real-time messaging.
 Set up WebSocket consumers to handle live communication.
 Permissions:
-Enforce p2p restrictions to allow customers to communicate only with one user type at a time.
+Enforce p2p restrictions to allow customers to communicate only with other user type at a time.
 Example of a WebSocket consumer:
 
 python

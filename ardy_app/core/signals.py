@@ -36,3 +36,13 @@ def notify_service_provider_on_revision(sender, instance, created, **kwargs):
             from_email="noreply@ardy-app.com",
             recipient_list=[service_provider_email],
         )
+
+@receiver(post_save, sender=UserSubscription)
+def send_subscription_email(sender, instance, created, **kwargs):
+    if created:
+        send_mail(
+            subject='Subscription Confirmation',
+            message=f"Thank you for subscribing to {instance.plan.name}! Your subscription has been confirmed.",
+            from_email='noreply@ardy-app.com',
+            recipient_list=[instance.user.email],
+        )

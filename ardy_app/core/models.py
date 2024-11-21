@@ -76,15 +76,7 @@ class PhoneOTP(models.Model):
 
 #----------------------------------------------------Start Subscription Model-----------------------------------------------
 
-class Subscription(models.Model):
-    user = models.OneToOneField(User, on_delete=models.CASCADE)
-    plan = models.CharField(max_length=100, default='Free', choices=[('Free', 'Free'), ('Premium', 'Premium')])
-    start_date = models.DateTimeField(blank=True, null=True)
-    end_date = models.DateTimeField(blank=True, null=True)
-    is_active = models.BooleanField(default=True)
 
-    def __str__(self):
-        return f"{self.user.username} - {self.plan} Plan"
     
 #----------------------------------------------------End Subscription Model-----------------------------------------------
 

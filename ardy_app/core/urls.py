@@ -2,7 +2,7 @@
 from django.urls import path, include, re_path
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 from knox import views as knox_views
-from .views import *
+from core.views import *
 
 app_name = 'core'
 
@@ -14,6 +14,8 @@ urlpatterns = [
     path('api/auth/logout/', knox_views.LogoutView.as_view(), name='logout'),
     path('api/auth/logoutall/', knox_views.LogoutAllView.as_view(), name='logoutall'),
     path('accounts/', include('allauth.urls')),
+    path('plans/', SubscriptionPlanListView.as_view(), name='subscription-plans'),
+    path('subscribe', SubscribeToPlanView.as_view(), name='subscribe'),
     #----------------------------------Quotations URLS --------------------------------
     path('quotations/', QuotationListView.as_view(), name='quotations-list'),
     path('quotations/create/', QuotationCreateView.as_view(), name='quotations-create'),

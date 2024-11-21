@@ -46,6 +46,20 @@ class SmartHomeProfileSerializer(serializers.ModelSerializer):
         model = SmartHomeProfile
         fields = ['user','company_name','expertise','experience','portfolio','introduction','projects_completed','company_profile']
 
+#---------------------------------------------------Subscription Serializer --------------------------------
+class SubscriptionPlanSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = SubscriptionPlan
+        fields = ['id', 'name', 'user_type', 'price', 'features', 'is_active']
+
+class UserSubscriptionSerializer(serializers.ModelSerializer):
+    plan_details = SubscriptionPlanSerializer(source="plan", read_only=True)
+    
+    class Meta:
+        model = UserSubscription
+        fields = ['id', 'user', 'plan', 'plan_details', 'start_date', 'end_date','is_active']
+
+
 
 #---------------------------------------------------Quotations Serializer --------------------------------
 
