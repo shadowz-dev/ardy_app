@@ -108,4 +108,28 @@ class QuotationApprovalView(generics.UpdateAPIView):
 
     def perform_update(self, serializer):
         serializer.save(status=self.request.data.get('status'))
-        
+
+class DrawingListView(generics.ListAPIView):
+    queryset = Drawing.objects.all()
+    serializer_class = DrawingSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+class DrawingUploadView(generics.CreateAPIView):
+    queryset = Drawing.objects.all()
+    serializer_class = DrawingSerializer
+    permission_classes = [permissions.IsAuthenticated, IsServiceProvider]
+
+class RevisionRequestView(generics.CreateAPIView):
+    queryset = Revision.objects.all()
+    serializer_class = RevisionSerializer
+    permission_classes = [permissions.IsAuthenticated, IsCustomer]
+
+class DocumentListView(generics.ListAPIView):
+    queryset = Document.objects.all()
+    serializer_class = DocumentSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+class DocumentUploadView(generics.CreateAPIView):
+    queryset = Document.objects.all()
+    serializer_class = DocumentSerializer
+    permission_classes = [permissions.IsAuthenticated]

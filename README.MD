@@ -26,6 +26,8 @@ created core model including
 - knox and allauth for django and permissions for handling.
 - urls for the app.
 
+step3 / step4 done
+
 
 
 __________________________________________________________________________________________________

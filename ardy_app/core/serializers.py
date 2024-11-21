@@ -3,8 +3,7 @@ from django.contrib.auth import authenticate
 from django.contrib.auth import get_user_model
 from rest_framework.exceptions import AuthenticationFailed
 from rest_framework.response import Response
-from .models import User, CustomerProfile, ConsultantProfile, InteriorProfile, ConstructionProfile, MaintainanceProfile, SmartHomeProfile
-from .models import Quotation, Projects
+from .models import *
 
 User = get_user_model()
 class UserSerializer(serializers.ModelSerializer):
@@ -54,3 +53,21 @@ class QuotationSerializer(serializers.ModelSerializer):
     class Meta:
         model = Quotation
         fields = ['id', 'project', 'service_provider', 'stage', 'stage', 'details', 'amount', 'status', 'created_at', 'updated_at']
+
+
+#---------------------------------------------------Drawing Serializer --------------------------------
+
+class DrawingSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Drawing
+        fields = ['id', 'project', 'service_provider', 'file', 'version', 'uploaded_at']
+
+class RevisionSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Revision
+        fields = ['id', 'drawing', 'customer', 'comment', 'requested_at', 'resolved']
+
+class DocumentSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Document
+        fields = ['id', 'project', 'uploaded_by', 'file', 'description', 'uploaded_at']

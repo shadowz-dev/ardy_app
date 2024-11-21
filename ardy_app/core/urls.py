@@ -20,4 +20,10 @@ urlpatterns = [
     path('quotations/<int:pk>/update/', QuotationUpdateView.as_view(), name='quotations-update'),
     path('quotations/<int:pk>/approve/', QuotationApprovalView.as_view(), name='quotations-approve'),
     #----------------------------------End Quotations URLS --------------------------------
+    #----------------------------------Drawings & Documents URLS --------------------------------
+    path('drawings/', DrawingListView.as_view(), name='drawing-list'),
+    path('drawings/upload/', DrawingUploadView.as_view(), name='drawing-upload'),
+    path('revisions/request/', RevisionRequestView.as_view(), name='revision-request'),
+    path('documents/', DocumentListView.as_view(), name='document-list'),
+    path('documents/upload/', DocumentUploadView.as_view(), name='document-upload'),
 ]

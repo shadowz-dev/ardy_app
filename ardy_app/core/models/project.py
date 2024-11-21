@@ -80,11 +80,25 @@ class Quotation(models.Model):
 
 class Drawing(models.Model):
     project = models.ForeignKey(Projects, on_delete=models.CASCADE, related_name="drawings")
-    consultant = models.ForeignKey(ConsultantProfile, on_delete=models.CASCADE)
+    consultant = models.ForeignKey(ConsultantProfile, on_delete=models.CASCADE, related_name="uploaded_drawings")
     version = models.PositiveIntegerField(default=1)
     file = models.FileField(upload_to='drawings/')
     created_at = models.DateTimeField(auto_now_add=True)
     notes = models.TextField(blank=True, null=True)
+
+    def __str__(self):
+        return f"Drawing V{self.version} for {self.project.title}"
+    
+
+class Revision(models.Model):
+    drawing = models.ForeignKey(Drawing, on_delete=models.CASCADE, related_name="revisions")
+    customer = models.ForeignKey(CustomerProfile, on_delete=models.CASCADE, related_name="requested_revisions")
+    comment = models.TextField()
+    requested_at = models.DateTimeField(auto_now_add=True)
+    resolved = models.BooleanField(default=False)
+
+    def __str__(self):
+        return f"Revision Request for Drawing {self.drawing.id}"
 
 class Phase(models.Model):
     project = models.ForeignKey(Projects, on_delete=models.CASCADE, related_name="phases")
@@ -95,9 +109,14 @@ class Phase(models.Model):
 
 
 class Document(models.Model):
-    file = models.FileField(upload_to='documents/')
-    uploaded_by = models.ForeignKey(User, on_delete=models.CASCADE)
+    project = models.ForeignKey(Projects, on_delete=models.CASCADE, blank=True, null=True, related_name="documents")
+    uploaded_by = models.ForeignKey(User, on_delete=models.CASCADE, related_name="uploaded_documents")
     uploaded_at = models.DateTimeField(auto_now_add=True)
-    project = models.ForeignKey('Projects', on_delete=models.CASCADE, blank=True, null=True)
+    file = models.FileField(upload_to="documents/%Y/%m/%d/")
+    description = models.CharField(max_length=255, blank=True, null=True)
+
+    def __str__(self):
+        return f"Document: {self.description or self.file.name}"
+    
 
 #----------------------------------------------------End Projects Model-----------------------------------------------
