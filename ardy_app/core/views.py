@@ -9,6 +9,9 @@ from knox.views import LoginView as knoxLoginView
 from rest_framework import permissions
 from rest_framework.authtoken.serializers import AuthTokenSerializer
 from django.contrib.auth import login
+from .utils import apply_sub_promo_code
+from decimal import Decimal
+from rest_framework.exceptions import ValidationError
 
 class RegisterUserView(generics.CreateAPIView):
     queryset = User.objects.all()
@@ -147,6 +150,14 @@ class SubscribeToPlanView(generics.CreateAPIView):
     def perform_create(self, serializer):
         user = self.request.user
         plan = serializer.validated_data('plan')
+        promo_code = self.request.data.get('promo_code', None)
+
+        discount_percent = 0
+        if promo_code:
+            discount_percent = apply_sub_promo_code(user, promo_code)
+
+        discounted_price = Decimal(plan.price) * (1 - (discount_percent / 100))
+
 
         if plan.user_type == 'Customer' and user.user_type != 'Customer':
             raise serializers.ValidationError("This plan is for customers only.")
@@ -167,3 +178,19 @@ class SubscriptionMiddleware(MiddlewareMixin):
         user = request.user
         if user.is_authenticated and hasattr(user, 'subscription') and not user.subscription.is_active:
             return JsonResponse({"error": "Your subscription has expired. Please renew your subscription."}, status=403)
+        
+
+class ApplySubPromoCodeView(generics.CreateAPIView):
+    def post(self, request, *args, **kwargs):
+        promo_code = request.data.get('promo_code')
+        try:
+            discount_percent = apply_sub_promo_code(request.user, promo_code)
+            return Response({'success': True, 'discount_percent': discount_percent})
+        except ValueError as e:
+            raise ValidationError({'error': str(e)})
+        
+class ReferralListView(generics.ListAPIView):
+    serializer_class = ReferralSerializer
+
+    def get_queryset(self):
+        return Referral.objects.filter(referrer = self.request.user)

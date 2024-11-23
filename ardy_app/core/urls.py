@@ -16,6 +16,8 @@ urlpatterns = [
     path('accounts/', include('allauth.urls')),
     path('plans/', SubscriptionPlanListView.as_view(), name='subscription-plans'),
     path('subscribe', SubscribeToPlanView.as_view(), name='subscribe'),
+    path('promo/apply/', ApplySubPromoCodeView.as_view(), name='apply-promo'),
+    path('referrals/', ReferralListView.as_view(), name='referral-list'),
     #----------------------------------Quotations URLS --------------------------------
     path('quotations/', QuotationListView.as_view(), name='quotations-list'),
     path('quotations/create/', QuotationCreateView.as_view(), name='quotations-create'),

@@ -3,7 +3,7 @@ from django.contrib.auth import authenticate
 from django.contrib.auth import get_user_model
 from rest_framework.exceptions import AuthenticationFailed
 from rest_framework.response import Response
-from .models import *
+from core.models import *
 
 User = get_user_model()
 class UserSerializer(serializers.ModelSerializer):
@@ -85,3 +85,16 @@ class DocumentSerializer(serializers.ModelSerializer):
     class Meta:
         model = Document
         fields = ['id', 'project', 'uploaded_by', 'file', 'description', 'uploaded_at']
+
+
+class SubPromoCodeSerialzer(serializers.ModelSerializer):
+    class Meta:
+        model = SubPromoCode
+        fields = ['id', 'code', 'discount_percentage', 'max_uses', 'uses', 'start_date', 'end_date', 'is_active']
+
+class ReferralSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Referral
+        fields = ['id', 'referrer', 'referred_user', 'code', 'reward', 'is_redeemed']
+
+

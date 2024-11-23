@@ -1,6 +1,6 @@
 from django.db.models.signals import post_save
 from django.dispatch import receiver
-from .models import *
+from models import *
 from django.core.mail import send_mail
 
 @receiver(post_save, sender=Quotation)
@@ -46,3 +46,8 @@ def send_subscription_email(sender, instance, created, **kwargs):
             from_email='noreply@ardy-app.com',
             recipient_list=[instance.user.email],
         )
+
+@receiver(post_save, sender=User)
+def create_referral_code(sender, instance, created, **kwargs):
+    if created:
+        Referral.objects.create(referrer=instance, code=f"REF-{instance.id}")

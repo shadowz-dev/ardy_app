@@ -8,10 +8,9 @@ from datetime import datetime
 from django.contrib.auth.models import AbstractUser, Group, Permission
 from django.core.management.base import BaseCommand
 from django.contrib.contenttypes.models import ContentType
-from .models.user import *
-from .models.project import *
-from .constants import *
-
+from .project import *
+from ..constants import *
+from .user import *
 
     
 #----------------------------------------------------Start Permission Groups Model-----------------------------------------------
@@ -146,4 +145,29 @@ class Transaction(models.Model):
 
 #----------------------------------------------------End Transactions Model-----------------------------------------------
 
-#----------------------------------------------------Start Notifications Model-----------------------------------------------
+#----------------------------------------------------Start PromoCode & Referral Model-----------------------------------------------
+
+class SubPromoCode(models.Model):
+    code = models.CharField(max_length=50, unique=True)
+    discount_percentage = models.DecimalField(max_digits=5, decimal_places=2)
+    max_uses = models.IntegerField(default=1)
+    uses = models.IntegerField(default=0)
+    start_date = models.DateTimeField(default=timezone.now)
+    end_date = models.DateTimeField()
+    is_active = models.BooleanField(default=True)
+
+    def is_valid(self):
+        return self.is_active and self.uses < self.max_uses and timezone.now() < self.end_date
+    
+    def __str__(self):
+        return self.code
+    
+class Referral(models.Model):
+    referrer = models.ForeignKey(User, on_delete=models.CASCADE, related_name='referrerals')
+    referred_user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='referred_by', null=True, blank=True)
+    code = models.CharField(max_length=50, unique=True)
+    reward = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
+    is_redeemed = models.BooleanField(default=False)
+
+    def __str__(self):
+        return f"Referral by {self.referrer.username}"
