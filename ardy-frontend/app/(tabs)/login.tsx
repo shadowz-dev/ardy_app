@@ -11,7 +11,6 @@ export default function LoginScreen() {
       <Text style={styles.text}>This is the login screen</Text>
       <Button title="Login as Customer" onPress={() => signIn('Customer')} />
       <Button title="Login as ServiceProvider" onPress={() => signIn('ServiceProvider')} />
-      <Button title="Logout" onPress={signOut} />
     </View>
   );
 }

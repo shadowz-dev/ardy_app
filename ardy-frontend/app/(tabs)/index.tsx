@@ -1,6 +1,11 @@
-import React from 'react';
-import { Text, View, StyleSheet, ScrollView, Image } from 'react-native';
+import React, { useState, useRef, useEffect } from 'react';
+import { Text, View, ScrollView, Image, RefreshControl, Animated, FlatList, TouchableOpacity, Modal } from 'react-native';
+import Video from 'react-native-video';
+import { useNavigation } from 'expo-router';
 import { Rating } from 'react-native-ratings';
+import { NativeSyntheticEvent, NativeScrollEvent } from 'react-native';
+import { styles } from './index_styles';
+import Stories from '@/components/stories';
 
 const logoImage = require('@/assets/images/logo.png');
 
@@ -19,8 +24,79 @@ const serviceProviders = [
 ];
 
 export default function Index() {
+  const [refreshing, setRefreshing] = useState(false);
+  const [scrollOffset, setScrollOffset] = useState(0);
+  const pullDownAnimation = useRef(new Animated.Value(0)).current;
+  const spinAnimation = useRef(new Animated.Value(0)).current;
+
+   // Spin animation for logo
+  const spin = spinAnimation.interpolate({
+    inputRange: [0, 1],
+    outputRange: ['0deg', '360deg'],
+  });
+
+  // Trigger spin animation while refreshing
+  useEffect(() => {
+    if (refreshing) {
+      Animated.loop(
+        Animated.timing(spinAnimation, {
+          toValue: 1,
+          duration: 1000,
+          useNativeDriver: true,
+        })
+      ).start();
+    } else {
+      spinAnimation.stopAnimation(() => spinAnimation.setValue(0));
+    }
+  }, [refreshing]);
+  // handle refresh Logic
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    // fetch data
+    await new Promise((resolve) => setTimeout(resolve, 2000));
+    // update state
+    setRefreshing(false);
+  };
+
+    // Scroll handler
+  const handleScroll = (event: NativeSyntheticEvent<NativeScrollEvent>  ) => {
+    const offsetY = event.nativeEvent.contentOffset.y;
+    setScrollOffset(offsetY);
+
+    // Update pullDownAnimation only for pull-down gesture
+    if (offsetY < 0) {
+      pullDownAnimation.setValue(offsetY);
+    }
+  };
+
   return (
-    <ScrollView contentContainerStyle={styles.container}>
+    <ScrollView
+      contentContainerStyle={styles.container}
+      onScroll={handleScroll}
+      scrollEventThrottle={16}
+      refreshControl={
+        <RefreshControl
+          refreshing={false}
+          onRefresh={onRefresh}
+          tintColor="transparent" // Hide default spinner
+          colors={['transparent']} // For Android
+        />
+      }
+    >
+      {/* Custom refresh animation */}
+      {(scrollOffset < 0 || refreshing) && (
+        <View style={styles.pullDownContainer}>
+          <Animated.Image
+            source={logoImage}
+            style={[styles.refreshLogo, { transform: [{ rotate: spin }] }]}
+          />
+          <Text style={styles.pullDownText}>
+            {refreshing ? 'Refreshing...' : 'Swipe Down to Refresh'}
+          </Text>
+        </View>
+      )}
+
       {/* Header Section */}
       <View style={styles.header}>
         <View style={styles.logoContainer}>
@@ -35,6 +111,15 @@ export default function Index() {
             Your All-In-One platform for smart construction and design solutions.
           </Text>
         </View>
+      </View>
+
+      {/* Stories */}
+      <View style={styles.sliderSection}>
+      <View style={styles.sectionTitleWrapper}>
+          <Text style={styles.sectionTitle}>Success</Text>
+          <Text style={styles.sectionTitleAccent}> Stories</Text>
+        </View>
+        <Stories />
       </View>
 
       {/* Service Providers Slider */}
@@ -120,123 +205,4 @@ export default function Index() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    backgroundColor: '#2d363b',
-    paddingBottom: 20,
-  },
-  header: {
-    flexDirection: 'row', // Align logo and welcome container in a row
-    alignItems: 'center', // Vertically align content
-    padding: 10,
-    marginTop: 10,
-    marginBottom: 30, // Add spacing between header and next section
-  },
-  logoContainer: {
-    marginRight: 10, // Add space between the logo and welcome text
-  },
-  logo: {
-    width: 70,
-    height: 70,
-    borderRadius: 10,
-  },
-  welcomeContainer: {
-    flex: 1, // Take remaining space
-  },
-  titleWrapper: {
-    flexDirection: 'row', // Align title and titleAccent horizontally
-  },
-  title: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#fff',
-  },
-  titleAccent: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#8ee7e4',
-  },
-  subtitle: {
-    fontSize: 14,
-    color: '#fff',
-    marginTop: 5,
-  },
-  sliderSection: {
-    marginTop: 20,
-    paddingHorizontal: 10,
-  },
-  sectionTitleWrapper: {
-    flexDirection: 'row', // Align main and accent title horizontally
-    marginBottom: 10, // Add spacing below the title
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#fff',
-  },
-  sectionTitleAccent: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#8ee7e4',
-  },
-  slider: {
-    flexDirection: 'row',
-  },
-  card: {
-    backgroundColor: '#615e5c3c',
-    borderRadius: 8,
-    padding: 20,
-    marginRight: 15,
-    alignItems: 'center',
-    justifyContent: 'flex-start',
-    width: 150,
-    height: 150,
-  },
-  cardText: {
-    color: '#fff',
-    fontSize: 14,
-    textAlign: 'center',
-    marginBottom: 10,
-  },
-  stars: {
-    backgroundColor: 'transparent',
-    marginBottom: 10,
-  },
-  username: {
-    color: '#ccc',
-    fontSize: 12,
-    fontStyle: 'italic',
-    textAlign: 'center',
-  },
-  servicesSection: {
-    marginTop: 20,
-    paddingHorizontal: 15,
-  },
-  serviceCard: {
-    backgroundColor: '#615e5c3c',
-    borderRadius: 8,
-    padding: 20,
-    marginBottom: 15,
-    shadowOpacity: 0.5,
-    shadowRadius: 5,
-  },
-  serviceTitle: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#fff',
-    marginBottom: 5,
-  },
-  serviceDescription: {
-    fontSize: 14,
-    color: '#ddd',
-  },
-  ratingContainer: {
-    marginBottom: 5,
-  },
-  providerLogo: {
-    width: 70,
-    height: 70,
-    borderRadius: 35, // Make the logo circular
-    marginBottom: 10, // Space between logo and name
-  },
-});
+

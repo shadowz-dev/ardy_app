@@ -10,6 +10,7 @@ import LoginScreen from './login';
 import QuotationsScreen from './quotations';
 import ProjectsScreen from './projects';
 import ProfileScreen from './profile';
+import OffersScreen from './offers';
 
 // Create the Tab Navigator
 const Tab = createBottomTabNavigator();
@@ -30,6 +31,19 @@ export default function TabLayout() {
                 tabBarIcon: ({ focused, color }) => (
                   <Ionicons
                     name={focused ? 'home-sharp' : 'home-outline'}
+                    color={color}
+                    size={24}
+                  />
+                ),
+              }}
+            />
+            <Tab.Screen
+              name="Offers"
+              component={OffersScreen}
+              options={{
+                tabBarIcon: ({ focused, color }) => (
+                  <Ionicons
+                    name={focused ? 'pricetags-sharp' : 'pricetags-outline'}
                     color={color}
                     size={24}
                   />
@@ -63,6 +77,19 @@ export default function TabLayout() {
                 tabBarIcon: ({ focused, color }) => (
                   <Ionicons
                     name={focused ? 'home-sharp' : 'home-outline'}
+                    color={color}
+                    size={24}
+                  />
+                ),
+              }}
+            />
+            <Tab.Screen
+              name="Offers"
+              component={OffersScreen}
+              options={{
+                tabBarIcon: ({ focused, color }) => (
+                  <Ionicons
+                    name={focused ? 'pricetags-sharp' : 'pricetags-outline'}
                     color={color}
                     size={24}
                   />
@@ -122,6 +149,19 @@ export default function TabLayout() {
                 tabBarIcon: ({ focused, color }) => (
                   <Ionicons
                     name={focused ? 'home-sharp' : 'home-outline'}
+                    color={color}
+                    size={24}
+                  />
+                ),
+              }}
+            />
+            <Tab.Screen
+              name="Quotations"
+              component={QuotationsScreen}
+              options={{
+                tabBarIcon: ({ focused, color }) => (
+                  <Ionicons
+                    name={focused ? 'document-sharp' : 'document-outline'}
                     color={color}
                     size={24}
                   />
