@@ -13,14 +13,17 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { Video, ResizeMode, AVPlaybackStatusSuccess } from 'expo-av';
-import * as VideoThumbnails from 'expo-video-thumbnails';
 import { Asset } from 'expo-asset';
+import * as VideoThumbnails from 'expo-video-thumbnails';
 
 const stories = [
-  { id: 1, type: 'image', source: require('@/assets/images/splash.png') },
+  { id: 1, type: 'image', source: require('@/assets/images/react-logo.png') },
   { id: 2, type: 'image', source: require('@/assets/images/splash.png') },
-  { id: 3, type: 'video', source: Asset.fromModule(require('@/assets/videos/sample.mp4')).uri },
-  { id: 4, type: 'image', source: require('@/assets/images/splash.png') },
+  { id: 3, type: 'video', source: require('@/assets/videos/sample.mp4') },
+  { id: 4, type: 'image', source: require('@/assets/images/Contract.jpg') },
+  { id: 5, type: 'image', source: require('@/assets/images/react-logo.png') },
+  { id: 6, type: 'image', source: require('@/assets/images/splash.png') },
+  { id: 7, type: 'image', source: require('@/assets/images/Contract.jpg') },
 ];
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
@@ -30,54 +33,114 @@ export default function Stories() {
   const [modalVisible, setModalVisible] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
   const [thumbnails, setThumbnails] = useState<string[]>([]);
-  const [videoDuration, setVideoDuration] = useState(5000);
-  const [isVideoLoading, setIsVideoLoading] = useState(false);
   const progressBars = useRef(stories.map(() => new Animated.Value(0))).current;
+  const [videoDuration, setVideoDuration] = useState(5000); // Default duration for images
 
   const videoRef = useRef<Video | null>(null);
+  const animationRef = useRef<Animated.CompositeAnimation | null>(null);
+  const pausedProgress = useRef<number>(0); // Store progress value when paused
 
+  /**
+   * Generate thumbnails for video stories.
+   */
   const generateThumbnails = async () => {
     const thumbnailUris = await Promise.all(
       stories.map(async (story) => {
         if (story.type === 'video') {
           try {
-            const { uri } = await VideoThumbnails.getThumbnailAsync(story.source, { time: 1000 });
+            const { uri } = await VideoThumbnails.getThumbnailAsync(
+              Asset.fromModule(story.source).uri,
+              { time: 1000 }
+            );
             return uri;
           } catch (e) {
-            console.error('Thumbnail generation failed:', e);
-            return 'https://via.placeholder.com/80'; // Fallback to null if generation fails
+            console.error('Thumbnail Error:', e);
+            return 'https://via.placeholder.com/80';
           }
+        } else {
+          return Image.resolveAssetSource(story.source).uri;
         }
-        return null;
       })
     );
-    setThumbnails(thumbnailUris.map((uri) => (uri ? uri : 'https://via.placeholder.com/80')));
+    setThumbnails(thumbnailUris);
   };
 
+  /**
+   * Start or resume progress animation.
+   */
+  const startProgress = (index: number, duration: number = 5000) => {
+    // Reset progress for the current story
+    resetProgress(index);
+  
+    // Start fresh progress animation
+    animationRef.current = Animated.timing(progressBars[index], {
+      toValue: 1,
+      duration,
+      useNativeDriver: false,
+    });
+  
+    animationRef.current.start(({ finished }) => {
+      if (finished) {
+        nextStory(); // Go to next story when animation completes
+      }
+    });
+  };
+  
+  const pauseProgress = () => {
+    if (animationRef.current) {
+      animationRef.current.stop();
+      progressBars[currentStoryIndex].stopAnimation((value) => {
+        pausedProgress.current = value; // Store paused progress
+      });
+    }
+  };
+  
+  const resumeProgress = () => {
+    const remainingDuration = videoDuration * (1 - pausedProgress.current);
+    startProgress(currentStoryIndex, remainingDuration);
+  };
+
+  const resetProgress = (index: number) => {
+    if (progressBars[index]) {
+      progressBars[index].stopAnimation();
+      progressBars[index].setValue(0); // Reset progress bar value
+    }
+    pausedProgress.current = 0; // Reset paused progress value
+  };
+
+  const resetAllProgressBars = () => {
+    progressBars.forEach((bar) => {
+      bar.setValue(0);
+    });
+  };
+
+  /**
+   * Open a story at a specific index.
+   */
   const openStory = (index: number) => {
-    if (index < 0 || index >= stories.length) return;
     setCurrentStoryIndex(index);
     setModalVisible(true);
     resetAllProgressBars();
-    startProgress(index);
+    if (stories[index].type === 'video') {
+      setIsPaused(false);
+    } else {
+      startProgress(index, 5000);
+    }
   };
 
-  const closeStory = () => {
-    setModalVisible(false);
-    resetAllProgressBars();
-  };
-
-  const nextStory = () => {
+  /**
+   * Navigate to the next story.
+   */
+  // Navigation functions
+const nextStory = () => {
     const nextIndex = currentStoryIndex + 1;
     if (nextIndex < stories.length) {
       resetProgress(currentStoryIndex);
       setCurrentStoryIndex(nextIndex);
       if (stories[nextIndex].type === 'video') {
-        // Wait for video load to start progress
-        setIsPaused(true);
+        setIsPaused(false);
       } else {
-        // Start progress bar for image
-        startProgress(nextIndex, 5000);
+        startProgress(nextIndex);
       }
     } else {
       closeStory();
@@ -91,39 +154,18 @@ export default function Stories() {
       resetProgress(prevIndex);
       setCurrentStoryIndex(prevIndex);
       if (stories[prevIndex].type === 'video') {
-        setIsPaused(true);
+        setIsPaused(false);
       } else {
-        startProgress(prevIndex, 5000);
+        startProgress(prevIndex);
       }
     }
   };
-
-  const startProgress = (index: number, duration: number = 5000) => {
-    resetProgress(index); // Reset the current progress bar
-    Animated.timing(progressBars[index], {
-      toValue: 1,
-      duration,
-      useNativeDriver: false,
-    }).start(() => {
-      if (modalVisible && currentStoryIndex === index) nextStory(); // Move to the next story when the bar finishes
-    });
-  };
   
-  
-
-  const resetProgress = (index: number) => {
-    if (progressBars[index]) {
-      progressBars[index].stopAnimation();
-      progressBars[index].setValue(0);
-    }
+  const closeStory = () => {
+    setModalVisible(false);
+    resetAllProgressBars();
   };
 
-  const resetAllProgressBars = () => {
-    progressBars.forEach((bar) => {
-      bar.stopAnimation();
-      bar.setValue(0);
-    });
-  };
 
   useEffect(() => {
     generateThumbnails();
@@ -138,88 +180,57 @@ export default function Stories() {
         keyExtractor={(item) => item.id.toString()}
         renderItem={({ item, index }) => (
           <TouchableOpacity onPress={() => openStory(index)} style={styles.storyThumbnail}>
-            {item.type === 'video' && thumbnails[index] ? (
-              <Image source={{ uri: thumbnails[index] }} style={styles.thumbnailImage} />
-            ) : (
-              <Image source={item.source} style={styles.thumbnailImage} />
-            )}
+            <Image source={{ uri: thumbnails[index] }} style={styles.thumbnailImage} />
           </TouchableOpacity>
         )}
       />
 
-      <Modal visible={modalVisible} transparent={true} animationType="slide">
+      <Modal visible={modalVisible} transparent animationType="fade">
         <View style={styles.modalContainer}>
-          {/* Close Button */}
-          <TouchableOpacity onPress={closeStory} style={styles.closeButton}>
-            <Text style={styles.closeText}>X</Text>
-          </TouchableOpacity>
-
-          <TouchableWithoutFeedback
-            onPress={(e) => {
-              const touchX = e.nativeEvent.locationX;
-              if (touchX < SCREEN_WIDTH / 2) {
-                previousStory();
-              } else {
-                nextStory();
-              }
-            }}
+        <TouchableWithoutFeedback
             onPressIn={() => {
                 setIsPaused(true);
-                progressBars[currentStoryIndex].stopAnimation(); // Stop progress bar when pausing
-              }}
-              onPressOut={() => {
+                pauseProgress(); // Pause animation
+            }}
+            onPressOut={() => {
                 setIsPaused(false);
-                progressBars[currentStoryIndex].stopAnimation((currentValue) => {
-                  const remainingTime = (1 - currentValue) * videoDuration; // Calculate remaining duration
-                  startProgress(currentStoryIndex, remainingTime); // Resume progress bar
-                });
-              }}
-          >
+                resumeProgress(); // Resume animation
+            }}
+            onPress={(e) => {
+                const touchX = e.nativeEvent.locationX;
+                if (touchX < SCREEN_WIDTH * 0.3) previousStory();
+                else if (touchX > SCREEN_WIDTH * 0.7) nextStory();
+            }}
+            >
             <View style={styles.touchableArea}>
-              {stories[currentStoryIndex]?.type === 'video' ? (
-                <>
-                {isVideoLoading && <ActivityIndicator size="large" color="#fff" />}
+                {stories[currentStoryIndex]?.type === 'video' ? (
                 <Video
-                ref={videoRef}
-                source={{ uri: stories[currentStoryIndex]?.source }}
-                style={[styles.storyContent, { width: SCREEN_WIDTH, height: SCREEN_HEIGHT * 0.8 }]}
-                resizeMode={ResizeMode.CONTAIN}
-                shouldPlay={!isPaused}
-                isMuted={false}
-                onLoad={(status) => {
-                    if (status.isLoaded) {
-                    setVideoDuration(status.durationMillis || 5000); // Update video duration
-                    startProgress(currentStoryIndex, status.durationMillis || 5000); // Start progress bar with actual duration
-                    } else {
-                    console.error('Error loading video:', status.error);
-                    }
-                }}
-                onPlaybackStatusUpdate={(status) => {
-                    if (status.isLoaded) {
-                    if (status.didJustFinish) {
-                        nextStory(); // Automatically move to the next story when the video finishes
-                    }
-                    }
-                }}
-                onLoadStart={() => {
-                    setIsPaused(true); // Pause until the video is loaded
-                }}
-                onReadyForDisplay={() => {
-                    setIsPaused(false); // Resume playback once the video is ready
-                }}
+                    ref={videoRef}
+                    source={stories[currentStoryIndex]?.source}
+                    style={styles.storyContent}
+                    resizeMode={ResizeMode.CONTAIN}
+                    shouldPlay={!isPaused}
+                    onLoad={(status) => {
+                        if (status.isLoaded) {
+                          setVideoDuration(status.durationMillis || 5000);
+                          startProgress(currentStoryIndex, status.durationMillis || 5000);
+                        }
+                      }}
+                      onPlaybackStatusUpdate={(status) => {
+                        if (status.isLoaded && status.didJustFinish) nextStory();
+                      }}
                 />
-                </>
                 ) : (
                 <Image
                     source={stories[currentStoryIndex]?.source}
-                    style={[styles.storyContent, { width: SCREEN_WIDTH, height: SCREEN_HEIGHT * 0.8 }]}
+                    style={styles.storyContent}
                     resizeMode="contain"
                 />
-              )}
+                )}
             </View>
-          </TouchableWithoutFeedback>
+            </TouchableWithoutFeedback>
 
-          {/* Progress Bar */}
+
           <View style={styles.progressContainer}>
             {stories.map((_, i) => (
               <View key={i} style={styles.progressWrapper}>
@@ -237,6 +248,10 @@ export default function Stories() {
               </View>
             ))}
           </View>
+
+          <TouchableOpacity onPress={closeStory} style={styles.closeButton}>
+            <Text style={styles.closeText}>X</Text>
+          </TouchableOpacity>
         </View>
       </Modal>
     </View>
@@ -244,64 +259,15 @@ export default function Stories() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    marginTop: 20,
-    paddingHorizontal: 10,
-  },
-  storyThumbnail: {
-    marginRight: 10,
-    borderRadius: 10,
-    overflow: 'hidden',
-  },
-  thumbnailImage: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-  },
-  modalContainer: {
-    flex: 1,
-    backgroundColor: '#000',
-  },
-  closeButton: {
-    position: 'absolute',
-    top: 40,
-    right: 20,
-    zIndex: 1,
-    backgroundColor: '#fff',
-    borderRadius: 20,
-    width: 40,
-    height: 40,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  closeText: {
-    fontSize: 20,
-    color: '#000',
-  },
-  progressContainer: {
-    position: 'absolute',
-    top: 10,
-    width: '90%',
-    flexDirection: 'row',
-  },
-  progressWrapper: {
-    flex: 1,
-    height: 2,
-    backgroundColor: '#aaa',
-    marginHorizontal: 2,
-  },
-  progressBar: {
-    height: 2,
-    backgroundColor: '#fff',
-  },
-  touchableArea: {
-    flex: 1,
-    width: SCREEN_WIDTH,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  storyContent: {
-    width: '100%',
-    height: '80%',
-  },
+  container: { marginTop: 20 },
+  storyThumbnail: { marginRight: 10, borderRadius: 10 },
+  thumbnailImage: { width: 80, height: 80, borderRadius: 40 },
+  modalContainer: { flex: 1, backgroundColor: '#000' },
+  touchableArea: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+  storyContent: { width: '100%', height: '80%' },
+  progressContainer: { position: 'absolute', top: 10, width: '90%', flexDirection: 'row' },
+  progressWrapper: { flex: 1, height: 2, marginHorizontal: 2, backgroundColor: '#444' },
+  progressBar: { height: 2, backgroundColor: '#fff' },
+  closeButton: { position: 'absolute', top: 40, right: 20, zIndex: 1 },
+  closeText: { color: '#fff', fontSize: 20 },
 });

@@ -97,21 +97,6 @@ export default function Index() {
         </View>
       )}
 
-      {/* Header Section */}
-      <View style={styles.header}>
-        <View style={styles.logoContainer}>
-          <Image source={logoImage} style={styles.logo} />
-        </View>
-        <View style={styles.welcomeContainer}>
-          <View style={styles.titleWrapper}>
-            <Text style={styles.title}>Welcome to</Text>
-            <Text style={styles.titleAccent}> Ardy!</Text>
-          </View>
-          <Text style={styles.subtitle}>
-            Your All-In-One platform for smart construction and design solutions.
-          </Text>
-        </View>
-      </View>
 
       {/* Stories */}
       <View style={styles.sliderSection}>

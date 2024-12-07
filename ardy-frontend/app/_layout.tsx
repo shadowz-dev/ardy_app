@@ -3,6 +3,7 @@ import { setStatusBarStyle } from 'expo-status-bar';
 import { useEffect } from "react";
 import { SessionProvider } from "@/components/AuthContext";
 import { Platform } from "react-native";
+import Header from "@/components/header";
 
 export default function RootLayout() {
   useEffect(() => {
@@ -10,6 +11,7 @@ export default function RootLayout() {
       setStatusBarStyle("dark");
     }, 0);
   }, []);
+
 
   return (
     <SessionProvider>
