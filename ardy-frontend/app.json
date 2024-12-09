@@ -20,7 +20,8 @@
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/splash.png",
         "backgroundColor": "#6a7f8c"
-      }
+      },
+      "package": "com.anonymous.ardyfrontend"
     },
     "web": {
       "bundler": "metro",

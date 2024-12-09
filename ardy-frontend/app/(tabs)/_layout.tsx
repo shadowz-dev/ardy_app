@@ -13,7 +13,6 @@ import QuotationsScreen from './quotations';
 import ProjectsScreen from './projects';
 import ProfileScreen from './profile';
 import OffersScreen from './offers';
-import HelpScreen from '../(aux)/help';
 
 // Create the Tab Navigator
 const Tab = createBottomTabNavigator();
@@ -52,6 +51,8 @@ export default function TabLayout() {
 
     return (
       <ScrollView
+      style={{ flex: 1}}
+      contentContainerStyle={{ flexGrow: 1}}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#7bd3ce" />
         }

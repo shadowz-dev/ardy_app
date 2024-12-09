@@ -23,6 +23,12 @@ export function SessionProvider({ children }: PropsWithChildren) {
 
   const isLoading = session === undefined || userType === undefined;
 
+  const clearSession = () => {
+    setSession(null);
+    setUserType(null);
+    console.log("Session cleared");
+  };
+
   return (
     <AuthContext.Provider
       value={{

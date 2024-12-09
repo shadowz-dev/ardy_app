@@ -1,6 +1,6 @@
 import React from 'react';
 import { Text, View, ScrollView, Image, FlatList, Dimensions } from 'react-native';
-import { styles } from './index_styles';
+import { styles } from './styles/index_styles';
 import Stories from '@/components/stories';
 import { Rating } from 'react-native-ratings';
 import Carousel from '@/components/carousel';

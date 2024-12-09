@@ -1,7 +1,7 @@
 
 import React from 'react';
-import { Text, View, ScrollView, Image, FlatList, Dimensions } from 'react-native';
-import { styles } from './index_styles';
+import { Text, View, ScrollView, Image, FlatList, Dimensions, SafeAreaView } from 'react-native';
+import { styles } from './styles/index_styles';
 import { Rating } from 'react-native-ratings';
 import Carousel from '@/components/carousel';
 
@@ -26,13 +26,15 @@ const carouselImages = [
 
 export default function OffersScreen() {
     return (
-        <ScrollView contentContainerStyle={styles.container}>
-            <Carousel
-            title= "Latest"
-            subtitle="Offers!"
-            data={carouselImages}
-            />
-        </ScrollView>
+        <SafeAreaView style={styles.container}>
+            <ScrollView contentContainerStyle={styles.container}>
+                <Carousel
+                title= "Latest"
+                subtitle="Offers!"
+                data={carouselImages}
+                />
+            </ScrollView>
+        </SafeAreaView>
       );
     }
     

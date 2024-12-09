@@ -5,6 +5,10 @@ const CARD_WIDTH = width * 0.3; // Adjusted card width for symmetry
 const FULL_WIDTH = width; // Full width for carousels
 const SPACING = 10; // Consistent spacing
 
+export default function Placeholder() {
+  return null;
+}
+
 export const styles = StyleSheet.create({
   container: {
     backgroundColor: '#2d363b',

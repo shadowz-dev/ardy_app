@@ -1,6 +1,6 @@
 import React from 'react';
 import { Text, View, Image, FlatList, Dimensions } from 'react-native';
-import { styles } from '@/app/(tabs)/index_styles';
+import { styles } from '@/app/(tabs)/styles/index_styles';
 
 // Get screen width for proper carousel rendering
 const { width } = Dimensions.get('window');
