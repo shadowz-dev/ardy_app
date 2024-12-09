@@ -1,24 +1,38 @@
 
-import { Text, View, StyleSheet, Button } from 'react-native';
 import React from 'react';
-import { useSession } from '@/components/AuthContext';
+import { Text, View, ScrollView, Image, FlatList, Dimensions } from 'react-native';
+import { styles } from './index_styles';
+import { Rating } from 'react-native-ratings';
+import Carousel from '@/components/carousel';
+
+// Mock data for carousel images
+const carouselImages = [
+    {
+      id: '1',
+      image: { uri: 'https://via.placeholder.com/400x200.png?text=Latest+Construction+Projects' },
+      caption: 'Latest Consultant joined',
+    },
+    {
+      id: '2',
+      image: { uri: 'https://via.placeholder.com/400x200.png?text=Modern+Interior+Designs' },
+      caption: 'Modern Interior Designs',
+    },
+    {
+      id: '3',
+      image: { uri: 'https://via.placeholder.com/400x200.png?text=Smart+Home+Innovations' },
+      caption: 'Smart Home Innovations',
+    },
+  ];
 
 export default function OffersScreen() {
     return (
-        <View style={styles.container}>
-          <Text style={styles.text}>Offers screen</Text>
-        </View>
+        <ScrollView contentContainerStyle={styles.container}>
+            <Carousel
+            title= "Latest"
+            subtitle="Offers!"
+            data={carouselImages}
+            />
+        </ScrollView>
       );
     }
     
-      const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-        backgroundColor: '#2d363b',
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    text: {
-        color: '#fff',
-    },
-    });

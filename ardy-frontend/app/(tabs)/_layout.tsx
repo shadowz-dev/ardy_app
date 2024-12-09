@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
-import { Animated } from 'react-native';
+import { Animated, ScrollView, RefreshControl } from 'react-native';
 import Header from '@/components/header';
 import { useSession } from '../../components/AuthContext';
 
@@ -12,15 +13,17 @@ import QuotationsScreen from './quotations';
 import ProjectsScreen from './projects';
 import ProfileScreen from './profile';
 import OffersScreen from './offers';
+import HelpScreen from '../(aux)/help';
 
 // Create the Tab Navigator
 const Tab = createBottomTabNavigator();
+const Stack = createNativeStackNavigator();
 
 export default function TabLayout() {
   const { session, userType } = useSession();
   const [scrollY] = useState(new Animated.Value(0));
 
-  // Render custom header with animated background
+  // Header with dynamic background color
   const renderCustomHeader = (title: string, subtitle: string) => (
     <Animated.View
       style={{
@@ -29,25 +32,39 @@ export default function TabLayout() {
           outputRange: ['#262b2e', '#2d363b'],
           extrapolate: 'clamp',
         }),
-        zIndex: 10,
       }}
     >
       <Header title={title} subtitle={subtitle} />
     </Animated.View>
   );
 
-  // A helper function to wrap screens and inject scroll logic
-  const withScrollLogic = (Component: React.ComponentType) => (props: any) => (
-    <Animated.ScrollView
-      onScroll={Animated.event(
-        [{ nativeEvent: { contentOffset: { y: scrollY } } }],
-        { useNativeDriver: false }
-      )}
-      scrollEventThrottle={16}
-    >
-      <Component {...props} />
-    </Animated.ScrollView>
-  );
+  // Higher-order component to wrap screens with ScrollView and refresh logic
+  const withScrollAndRefresh = (Component: React.ComponentType) => (props: any) => {
+    const [refreshing, setRefreshing] = useState(false);
+
+    const onRefresh = () => {
+      setRefreshing(true);
+      // Simulate a network request or refresh logic
+      setTimeout(() => {
+        setRefreshing(false);
+      }, 2000);
+    };
+
+    return (
+      <ScrollView
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#7bd3ce" />
+        }
+        onScroll={Animated.event(
+          [{ nativeEvent: { contentOffset: { y: scrollY } } }],
+          { useNativeDriver: false }
+        )}
+        scrollEventThrottle={16}
+      >
+        <Component {...props} />
+      </ScrollView>
+    );
+  };
 
   // Function to determine which tabs to show
   const getTabs = () => {
@@ -56,7 +73,7 @@ export default function TabLayout() {
         <>
           <Tab.Screen
             name="Home"
-            component={withScrollLogic(HomeScreen)}
+            component={withScrollAndRefresh(HomeScreen)}
             options={{
               header: () => renderCustomHeader('Welcome Home', 'Explore your home dashboard!'),
               tabBarIcon: ({ focused, color }) => (
@@ -66,7 +83,7 @@ export default function TabLayout() {
           />
           <Tab.Screen
             name="Offers"
-            component={withScrollLogic(OffersScreen)}
+            component={withScrollAndRefresh(OffersScreen)}
             options={{
               header: () => renderCustomHeader('Special Offers', 'Check out the latest deals!'),
               tabBarIcon: ({ focused, color }) => (
@@ -76,7 +93,7 @@ export default function TabLayout() {
           />
           <Tab.Screen
             name="Login"
-            component={withScrollLogic(LoginScreen)}
+            component={withScrollAndRefresh(LoginScreen)}
             options={{
               header: () => renderCustomHeader('Login', 'Access your account now.'),
               tabBarIcon: ({ focused, color }) => (
@@ -93,7 +110,7 @@ export default function TabLayout() {
         <>
           <Tab.Screen
             name="Home"
-            component={withScrollLogic(HomeScreen)}
+            component={withScrollAndRefresh(HomeScreen)}
             options={{
               header: () => renderCustomHeader('Welcome', 'Explore your home dashboard!'),
               tabBarIcon: ({ focused, color }) => (
@@ -103,7 +120,7 @@ export default function TabLayout() {
           />
           <Tab.Screen
             name="Offers"
-            component={withScrollLogic(OffersScreen)}
+            component={withScrollAndRefresh(OffersScreen)}
             options={{
               header: () => renderCustomHeader('Special Offers', 'Check out the latest deals!'),
               tabBarIcon: ({ focused, color }) => (
@@ -113,7 +130,7 @@ export default function TabLayout() {
           />
           <Tab.Screen
             name="Quotations"
-            component={withScrollLogic(QuotationsScreen)}
+            component={withScrollAndRefresh(QuotationsScreen)}
             options={{
               header: () => renderCustomHeader('Quotations', 'View and manage your quotes.'),
               tabBarIcon: ({ focused, color }) => (
@@ -123,7 +140,7 @@ export default function TabLayout() {
           />
           <Tab.Screen
             name="Projects"
-            component={withScrollLogic(ProjectsScreen)}
+            component={withScrollAndRefresh(ProjectsScreen)}
             options={{
               header: () => renderCustomHeader('Your Projects', 'Manage your ongoing projects.'),
               tabBarIcon: ({ focused, color }) => (
@@ -133,7 +150,7 @@ export default function TabLayout() {
           />
           <Tab.Screen
             name="Profile"
-            component={withScrollLogic(ProfileScreen)}
+            component={withScrollAndRefresh(ProfileScreen)}
             options={{
               header: () => renderCustomHeader('Your Profile', 'Update your profile information.'),
               tabBarIcon: ({ focused, color }) => (
@@ -144,6 +161,53 @@ export default function TabLayout() {
         </>
       );
     }
+
+    if (userType === 'ServiceProvider') {
+        return (
+          <>
+            <Tab.Screen
+              name="Home"
+              component={withScrollAndRefresh(HomeScreen)}
+              options={{
+                header: () => renderCustomHeader('Welcome', 'Explore your home dashboard!'),
+                tabBarIcon: ({ focused, color }) => (
+                  <Ionicons name={focused ? 'home-sharp' : 'home-outline'} color={color} size={24} />
+                ),
+              }}
+            />
+            <Tab.Screen
+              name="Quotations"
+              component={withScrollAndRefresh(QuotationsScreen)}
+              options={{
+                header: () => renderCustomHeader('Quotations', 'View and manage your quotes.'),
+                tabBarIcon: ({ focused, color }) => (
+                  <Ionicons name={focused ? 'document-sharp' : 'document-outline'} color={color} size={24} />
+                ),
+              }}
+            />
+            <Tab.Screen
+              name="Projects"
+              component={withScrollAndRefresh(ProjectsScreen)}
+              options={{
+                header: () => renderCustomHeader('Your Projects', 'Manage your ongoing projects.'),
+                tabBarIcon: ({ focused, color }) => (
+                  <Ionicons name={focused ? 'hammer-sharp' : 'hammer-outline'} color={color} size={24} />
+                ),
+              }}
+            />
+            <Tab.Screen
+              name="Profile"
+              component={withScrollAndRefresh(ProfileScreen)}
+              options={{
+                header: () => renderCustomHeader('Your Profile', 'Update your profile information.'),
+                tabBarIcon: ({ focused, color }) => (
+                  <Ionicons name={focused ? 'person-circle-sharp' : 'person-circle-outline'} color={color} size={24} />
+                ),
+              }}
+            />
+          </>
+        );
+      }
 
     return null;
   };

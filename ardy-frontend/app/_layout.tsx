@@ -3,7 +3,6 @@ import { setStatusBarStyle } from 'expo-status-bar';
 import { useEffect } from "react";
 import { SessionProvider } from "@/components/AuthContext";
 import { Platform } from "react-native";
-import Header from "@/components/header";
 
 export default function RootLayout() {
   useEffect(() => {
@@ -17,6 +16,10 @@ export default function RootLayout() {
     <SessionProvider>
       <Stack>
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+        <Stack.Screen name="(aux)/help" options={{ headerShown: false }} />
+        <Stack.Screen name="(aux)/helpdesk-chat" options={{ headerShown: false }} />
+        <Stack.Screen name="(aux)/privacy-policy" options={{ headerShown: false }} />
+        <Stack.Screen name="(aux)/terms-of-service" options={{ headerShown: false }} />
         <Stack.Screen name="+not-found" />
       </Stack>
     </SessionProvider>
