@@ -3,47 +3,38 @@ from django.db import models
 from django.core.validators import RegexValidator
 from django.utils import timezone
 from datetime import datetime
+from django.conf import settings
 
 #Users Imports
 from django.contrib.auth.models import AbstractUser, Group, Permission
-from django.core.management.base import BaseCommand
 from django.contrib.contenttypes.models import ContentType
 from .project import *
 from ..constants import *
 from .user import *
 
     
-#----------------------------------------------------Start Permission Groups Model-----------------------------------------------
-class Command(BaseCommand):
-    help = 'Create default user groups and permissions'
-
-    def handle(self, *args, **kwargs):
-        groups = {
-            'Customers': [],
-            'Consultants': ['can_submit_quotation', 'can_upload_drawings'],
-            'Construction': ['can_submit_quotation','can_update_project_phases'],
-            'InteriorDesigners': ['can_submit_quotation','can_upload_designes'],
-            'Admins': ['can_approve_users', 'can_manage_projects'],
-        }
-
-        for group_name, permissions in groups.items():
-            group, created = Group.objects.get_or_create(name=group_name)
-            for perm_codename in permissions:
-                permission, _ = Permission.objects.get_or_create(
-                    name=f"Can {perm_codename.replace('-', ' ')}",
-                    content_type=ContentType.objects.get_for_model(User),
-                )
-                group.permissions.add(permission)
-            self.stdout.write(self.style.SUCCESS(f"Group '{group_name}' updated"))
-        self.stdout.write(self.style.SUCCESS("Groups and permissions set up"))
-
-
 
 class CompanyProfile(models.Model):
     company_name = models.CharField(max_length=255)
-    owner = models.OneToOneField(User, on_delete=models.CASCADE, related_name='company')
-    employees = models.ManyToManyField(User, related_name='company_employees', blank=True)
+    owner = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='company')
+    employees = models.ManyToManyField(settings.AUTH_USER_MODEL, related_name='company_employees', blank=True, through='EmployeeRelationship')
     created_at = models.DateTimeField(auto_now_add=True)
+    
+    def __str__(self):
+        return self.company_name
+    
+class EmployeeRelationship(models.Model):
+    company = models.ForeignKey(CompanyProfile, on_delete=models.CASCADE)
+    employee = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    job_title = models.CharField(max_length=255, blank=True)
+    start_date = models.DateField(null=True, blank=True)
+    
+    class Meta:
+        unique_together = ('company', 'employee')
+        
+        
+    def __str__(self):
+        return f"{self.employee.username} at {self.company.company_name}"
 
 
 #----------------------------------------------------Start General Documents Model-----------------------------------------------
@@ -52,25 +43,25 @@ class CompanyProfile(models.Model):
 
 
 #----------------------------------------------------Start PhoneOTP Model-----------------------------------------------
-class PhoneOTP(models.Model):
-    email = models.EmailField(blank=False, null=False, unique=True)
-    first_name = models.CharField(max_length=20, blank=False, null=False)
-    last_name = models.CharField(max_length=20, blank=False, null=False)
-    phone_regex = RegexValidator(regex=r'^\+?1?\d{9,14}$', message="Phone number must be entered in the format: '+9999999999'. Up to 14 digits allowed.")
-    phone = models.CharField(validators=[phone_regex], max_length=14, blank=False, null=False, unique=True)
-    password = models.CharField(default=0, blank=False, null=False, max_length=50)
+class UserOTP(models.Model):
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='otps',default=1)
+    phone_regex = RegexValidator(
+        regex=r'^\+?1?\d{9,14}$',
+        message="Phone number must be entered in the format: '+9999999999'. Up to 14 digits allowed."
+    )
+    phone= models.CharField(validators=[phone_regex], max_length=14, blank=False, null=False)
+    email= models.EmailField(blank=False, null=False)
     otp = models.CharField(max_length=9, blank=True, null=True)
-    count = models.IntegerField(default=0, help_text='Number of otp sent')
-    logged = models.BooleanField(default=False, help_text='If otp verification got successful')
-    forgot = models.BooleanField(default=False, help_text='only true for forgot password')
-    forgot_logged = models.BooleanField(default=False, help_text='Only true if validate otp forgot get successful')
-    referral_code = models.CharField(max_length=200, blank=True, null=True, unique=False)
-    signup_type = models.CharField(default="Manual", max_length=6, choices=SIGNUP_TYPE, help_text='Type of Signup.')
+    count= models.IntegerField(default=0, help_text="Number of OTP sent")
+    otp_type = models.CharField(max_length=20, choices=UserOTP, default='signup')
     social_login_token = models.CharField(max_length=1000, blank=True, null=True, default=None)
-    notification_token = models.CharField(default=None, blank=True, null=True, max_length=300, unique=True, help_text='We will send the notification via this token.')
+    
+    class Meta:
+        unique_together = ('phone', 'email',)
+    
 
     def __str__(self):
-        return str(self.email) + ' is sent ' + str(self.otp)
+        return f"OTP for {self.user.username} ({self.otp_type})"
 #-----------------------------------------------------End PhoneOTP Model------------------------------------------------
 
 #----------------------------------------------------Start Subscription Model-----------------------------------------------

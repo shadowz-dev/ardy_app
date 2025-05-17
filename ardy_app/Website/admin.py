@@ -8,7 +8,7 @@ class MainAnimationAdmin(admin.ModelAdmin):
 
 @admin.register(Slogan)
 class SloganAdmin(admin.ModelAdmin):
-    list_display = ('slogan', 'short_words')
+    list_display = ('slogan', 'short_slogan')
 
 @admin.register(WhyUs)
 class WhyBellMealsAdmin(admin.ModelAdmin):

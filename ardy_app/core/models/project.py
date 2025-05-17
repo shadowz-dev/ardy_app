@@ -20,7 +20,7 @@ class LandDetail(models.Model):
     customer = models.ForeignKey(CustomerProfile, on_delete=models.CASCADE, related_name="land_details")
     land_area_in_sq_ft = models.DecimalField(max_digits=10, decimal_places=2)
     location = models.CharField(max_length=255,)
-    building_in_sq_ft = models.FloatField()
+    building_in_sq_ft = models.DecimalField(max_digits=10, decimal_places=2)
     survey_number = models.CharField(max_length=100, blank=True, null=True)
     building_type = models.CharField(max_length=50, choices=BUILDING_CHOICES)
     is_approved = models.BooleanField(default=False)

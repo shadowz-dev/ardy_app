@@ -5,6 +5,7 @@ from django.utils import timezone
 from datetime import datetime
 from django.contrib.auth.models import AbstractUser
 from ..constants import *
+import os
 
 
 class User(AbstractUser):
@@ -12,7 +13,6 @@ class User(AbstractUser):
     email = models.EmailField(blank=False, null=False, unique=True)
     phone_regex = RegexValidator(regex=r'^\+?1?\d{9,14}$', message="Phone number must be entered in the format : '+99999999999'. Up to 14 digits allowed.",)
     phone = models.CharField(validators=[phone_regex], max_length=14, blank=False, null=False, unique=True)
-    signup_type = models.CharField(default="Manual", max_length=6, choices=SIGNUP_TYPE, help_text='Type of Signup.')
     is_active = models.BooleanField(default=True)
 
     # Default users fields.
@@ -28,6 +28,11 @@ class User(AbstractUser):
         return f"{self.username} - ({self.user_type})"
     
 
+def company_profile_upload_path(instance, filename):
+    # file will be uploaded to MEDIA_ROOT/company_profiles/<company_name>/<year>/<month>/<day>/<filename>
+    company_name = instance.company_name
+    return os.path.join('company_profiles', company_name, datetime.now().strftime('%Y'), datetime.now().strftime('%m'), datetime.now().strftime('%d'), filename)
+
 class BaseProfile(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE)
     company_name = models.CharField(max_length=100, blank=True)
@@ -36,10 +41,11 @@ class BaseProfile(models.Model):
     portfolio = models.URLField(blank=True, null=True)
     introduction = models.TextField(blank=True)
     projects_completed = models.IntegerField(blank=True, null=True)
-    company_profile = models.FileField(upload_to='company_profiles/%Y/%m/%d/', blank=True)
-
+    company_profile = models.FileField(upload_to=company_profile_upload_path, blank=True)
+    
     class Meta:
         abstract = True
+
 
 class CustomerProfile(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE)
@@ -52,37 +58,47 @@ class CustomerProfile(models.Model):
         return f"{self.user.username} - Customer Profile"
 
 class ConsultantProfile(BaseProfile):
-    pass
+    def __str__(self):
+        return f"{self.user.username} - Consultant Profile"
 
 class InteriorProfile(BaseProfile):
-    pass
+    def __str__(self):
+        return f"{self.user.username} - Interior Profile"
 
 class ConstructionProfile(BaseProfile):
-    pass
+    def __str__(self):
+        return f"{self.user.username} - Construction Profile"
 
 class MaintainanceProfile(BaseProfile):
-    pass
+    def __str__(self):
+        return f"{self.user.username} - Maintainance Profile"
 
 class SmartHomeProfile(BaseProfile):
-    pass
+    def __str__(self):
+        return f"{self.user.username} - SmartHome Profile"
 
 #----------------------------------------------------------------Subscriptions-----------------------------------------------------
 
 class SubscriptionPlan(models.Model):
     name = models.CharField(max_length=100)
-    user_type = models.CharField(max_length=50, choices=[('Customer', 'Customer'), ('Service Provider', 'Service Provider')])
+    user_type = models.CharField(max_length=50, choices=[('1', 'Customer'), ('2', 'Service Provider')])
     price = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
-    features = models.JSONField(default=dict)
+    features = models.JSONField(default=dict, help_text="JSON structure for features")
     is_active = models.BooleanField(default=True)
 
     def __str__(self):
-        return f"{self.name} ({self.user_type})"
+        return f"{self.name} ({self.get_user_type_display()})"
     
 class UserSubscription(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='subscription')
-    plan = models.ForeignKey(SubscriptionPlan, on_delete=models.SET_NULL, null=True,blank=True)
+    plan = models.ForeignKey(SubscriptionPlan, on_delete=models.PROTECT, null=False,blank=False,default=1)
     start_date = models.DateTimeField(null=True, blank=True)
     is_active = models.BooleanField(default=False)
+    
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=['user', 'plan'], name='unique_user_subscription')
+        ]
 
     def __str__(self):
         return f"{self.user.username} - {self.plan.name if self.plan else 'No Plan'}"

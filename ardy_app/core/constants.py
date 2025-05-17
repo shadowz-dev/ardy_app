@@ -30,3 +30,8 @@ BUILDING_CHOICES = [
     ('G+8', 'G+8'),
     ('Tower', 'Tower'),
 ]
+
+UserOTP=[
+    ('signup', 'Signup'),
+    ('reset_password', 'Reset Password'),
+]
