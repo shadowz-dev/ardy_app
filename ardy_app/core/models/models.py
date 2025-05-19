@@ -44,7 +44,7 @@ class EmployeeRelationship(models.Model):
 
 #----------------------------------------------------Start PhoneOTP Model-----------------------------------------------
 class UserOTP(models.Model):
-    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='otps',default=1)
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='otps',null=True,blank=True)
     phone_regex = RegexValidator(
         regex=r'^\+?1?\d{9,14}$',
         message="Phone number must be entered in the format: '+9999999999'. Up to 14 digits allowed."

@@ -2,7 +2,7 @@
 
 USER_TYPES = [('Customer', 'Customer'), ('Consultant', 'Consultant'),
             ('Interior Designer', 'Interior Designer'), ('Construction', 'Construction'),
-            ('Maintainance', 'Maintainance'),('Smart_Home', 'Smart_Home'), ('Admin', 'Admin'),]
+            ('Maintenance', 'Maintenance'),('Smart_Home', 'Smart_Home'), ('Admin', 'Admin'),]
 
 SIGNUP_TYPE = [
     ("Manual", "Manual"),
@@ -34,4 +34,5 @@ BUILDING_CHOICES = [
 UserOTP=[
     ('signup', 'Signup'),
     ('reset_password', 'Reset Password'),
+    ('phone_verification', 'Phone Verification'),
 ]
