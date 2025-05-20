@@ -16,9 +16,9 @@ class IsConstruction(BasePermission):
     def has_permission(self, request, view):
         return request.user.is_authenticated() and request.user.user_type == "Construction"
     
-class IsMaintainance(BasePermission):
+class IsMaintenance(BasePermission):
     def has_permission(self, request, view):
-        return request.user.is_authenticated() and request.user.user_type == "Maintainance"
+        return request.user.is_authenticated() and request.user.user_type == "Maintenance"
     
 class IsSmartHome(BasePermission):
     def has_permission(self, request, view):

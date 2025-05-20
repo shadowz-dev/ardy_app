@@ -65,7 +65,7 @@ class BaseProfile(models.Model):
 
 class CustomerProfile(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE)
-    budget = models.IntegerField(blank=True)
+    budget = models.IntegerField(blank=True, default=0)
     property_status = models.CharField(max_length=100, blank=True)
     project_details = models.TextField(blank=True)
     attachments = models.FileField(upload_to=customer_attachement_upload_path,blank=True)
@@ -85,9 +85,9 @@ class ConstructionProfile(BaseProfile):
     def __str__(self):
         return f"{self.user.username} - Construction Profile"
 
-class MaintainanceProfile(BaseProfile):
+class MaintenanceProfile(BaseProfile):
     def __str__(self):
-        return f"{self.user.username} - Maintainance Profile"
+        return f"{self.user.username} - Maintenance Profile"
 
 class SmartHomeProfile(BaseProfile):
     def __str__(self):

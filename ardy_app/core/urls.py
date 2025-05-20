@@ -33,7 +33,7 @@ urlpatterns = [
     path('api/profiles/consultant/', ConsultantProfileDetailView.as_view(), name='consultant-profile-detail'),
     path('api/profiles/interior/', InteriorProfileDetailView.as_view(), name='interior-profile-detail'),
     path('api/profiles/construction/', ConstructionProfileDetailView.as_view(), name='construction-profile-detail'),
-    path('api/profiles/maintainance/', MaintainanceProfileDetailView.as_view(), name='maintainance-profile-detail'), # Check spelling
+    path('api/profiles/maintainance/', MaintenanceProfileDetailView.as_view(), name='maintainance-profile-detail'), # Check spelling
     path('api/profiles/smarthome/', SmartHomeProfileDetailView.as_view(), name='smarthome-profile-detail'),
 
     # Subscription URLs

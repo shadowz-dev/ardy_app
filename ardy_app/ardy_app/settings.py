@@ -12,6 +12,7 @@ https://docs.djangoproject.com/en/3.2/ref/settings/
 
 from pathlib import Path
 import os
+import sys
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -44,7 +45,7 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     # custom moduels
-    'core',
+    'core.apps.CoreConfig',
     'chat',
     'Website',
     # Third Party modules
@@ -190,3 +191,24 @@ CORS_ALLOWED_ORIGINS = [
 ]
 
 DEFAULT_FROM_EMAIL = 'noreply@ardy-app.com'
+
+
+#print("--- Attempting to import CoreConfig directly in settings.py ---", file=sys.stderr)
+#try:
+#    from django.apps import apps
+#    cfg = apps.get_app_config('core') # 'core' is the app label
+#    print(f"--- Successfully got app_config for 'core': {cfg.__class__.__name__} from {cfg.__module__} ---", file=sys.stderr)
+#    if hasattr(cfg, 'ready') and callable(cfg.ready):
+#        print(f"--- CoreConfig instance HAS a callable 'ready' method. ---", file=sys.stderr)
+#    else:
+#        print(f"--- CoreConfig instance DOES NOT HAVE a callable 'ready' method or it's missing. ---", file=sys.stderr)
+#
+#except LookupError:
+#    print("--- FAILED to get_app_config for 'core'. Django doesn't recognize it properly. ---", file=sys.stderr)
+#except ImportError as e:
+#    print(f"--- FAILED to import or lookup CoreConfig due to ImportError: {e} ---", file=sys.stderr)
+#except Exception as e:
+#    import traceback
+#    print(f"--- UNEXPECTED ERROR getting/inspecting CoreConfig: {e} ---", file=sys.stderr)
+#    traceback.print_exc(file=sys.stderr)
+#print("--- Finished settings.py direct import check ---", file=sys.stderr)

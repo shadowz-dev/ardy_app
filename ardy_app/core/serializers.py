@@ -47,11 +47,11 @@ class ConstructionProfileSerializer(serializers.ModelSerializer):
         model = ConstructionProfile
         fields = ['user','user_details' ,'company_name','expertise','experience','portfolio','introduction','projects_completed','company_profile']
 
-class MaintainanceProfileSerializer(serializers.ModelSerializer):  
+class MaintenanceProfileSerializer(serializers.ModelSerializer):  
     user_details = UserSerializer(source='user', read_only=True)
     user = serializers.PrimaryKeyRelatedField(queryset=User.objects.all(), write_only=True)
     class Meta:
-        model = MaintainanceProfile 
+        model = MaintenanceProfile 
         fields = ['user','user_details' ,'company_name','expertise','experience','portfolio','introduction','projects_completed','company_profile']
 
 class SmartHomeProfileSerializer(serializers.ModelSerializer):

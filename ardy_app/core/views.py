@@ -15,7 +15,7 @@ from rest_framework.authtoken.serializers import AuthTokenSerializer # Used by K
 
 from .models.user import (
     User, CustomerProfile, ConsultantProfile, InteriorProfile, ConstructionProfile,
-    MaintainanceProfile, SmartHomeProfile, SubscriptionPlan, UserSubscription
+    MaintenanceProfile, SmartHomeProfile, SubscriptionPlan, UserSubscription
 )
 from .models import Referral
 from .models.project import (
@@ -23,14 +23,14 @@ from .models.project import (
 )
 from .serializers import (
     UserSerializer, CustomerProfileSerializer, ConsultantProfileSerializer, InteriorProfileSerializer,
-    ConstructionProfileSerializer, MaintainanceProfileSerializer, SmartHomeProfileSerializer,
+    ConstructionProfileSerializer, MaintenanceProfileSerializer, SmartHomeProfileSerializer,
     SubscriptionPlanSerializer, UserSubscriptionSerializer, ReferralSerializer,
     ProjectsSerializer, PhaseSerializer, QuotationSerializer, DrawingSerializer,
     RevisionSerializer, DocumentSerializer, SubPromoCodeSerializer
 )
 from .permission import ( # Assuming these are defined
     IsCustomer, IsConsultant, IsInterior, IsConstruction,
-    IsMaintainance, IsSmartHome, IsServiceProvider
+    IsMaintenance, IsSmartHome, IsServiceProvider
 )
 from .utils import apply_sub_promo_code # Assuming this utility exists
 
@@ -109,10 +109,10 @@ class ConstructionProfileDetailView(UserProfileView):
     serializer_class = ConstructionProfileSerializer
     permission_classes = [permissions.IsAuthenticated, IsConstruction]
 
-class MaintainanceProfileDetailView(UserProfileView):
-    queryset = MaintainanceProfile.objects.all()
-    serializer_class = MaintainanceProfileSerializer
-    permission_classes = [permissions.IsAuthenticated, IsMaintainance]
+class MaintenanceProfileDetailView(UserProfileView):
+    queryset = MaintenanceProfile.objects.all()
+    serializer_class = MaintenanceProfileSerializer
+    permission_classes = [permissions.IsAuthenticated, IsMaintenance]
 
 class SmartHomeProfileDetailView(UserProfileView):
     queryset = SmartHomeProfile.objects.all()
@@ -130,7 +130,7 @@ class ProjectsViewSet(viewsets.ModelViewSet):
         user = self.request.user
         if user.user_type == 'Customer':
             return Projects.objects.filter(customer__user=user)
-        elif user.user_type in ['Consultant', 'Construction', 'Interior Designer', 'Maintainance', 'Smart Home']:
+        elif user.user_type in ['Consultant', 'Construction', 'Interior Designer', 'Maintenance', 'Smart Home']:
             # Service providers see projects they are primary on or assigned to a phase in
             return Projects.objects.filter(
                 Q(primary_service_provider=user) | Q(phases__service_provider=user)
@@ -230,7 +230,7 @@ class PhaseViewSet(viewsets.ModelViewSet):
         else: # If not filtering by project, apply general user-based filtering
             if user.user_type == 'Customer':
                 queryset = queryset.filter(project__customer__user=user)
-            elif user.user_type in ['Consultant', 'Construction', 'Interior Designer', 'Maintainance', 'Smart Home']:
+            elif user.user_type in ['Consultant', 'Construction', 'Interior Designer', 'Maintenance', 'Smart Home']:
                 queryset = queryset.filter(service_provider=user)
             elif not user.is_staff: # Non-admin, non-customer, non-SP shouldn't see any by default
                 return Phase.objects.none()
@@ -270,7 +270,7 @@ class QuotationViewSet(viewsets.ModelViewSet):
         user = self.request.user
         if user.user_type == 'Customer':
             return Quotation.objects.filter(project__customer__user=user)
-        elif user.user_type in ['Consultant', 'Construction', 'Interior Designer', 'Maintainance', 'Smart Home']:
+        elif user.user_type in ['Consultant', 'Construction', 'Interior Designer', 'Maintenance', 'Smart Home']:
             return Quotation.objects.filter(service_provider=user)
         elif user.is_staff:
             return Quotation.objects.all()

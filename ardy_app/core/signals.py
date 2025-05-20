@@ -5,7 +5,7 @@ from django.conf import settings
 import uuid
 from .constants import (STATUS_ACCEPTED,STATUS_CANCELLED,STATUS_COMPLETED,STATUS_IN_PROGRESS,STATUS_PENDING,STATUS_REJECTED, SERVICE_PROVIDER_USER_TYPES_REQUIRING_APPROVAL)
 
-from .models.user import User, CustomerProfile, ConsultantProfile, ConstructionProfile, InteriorProfile, MaintainanceProfile, SmartHomeProfile, UserSubscription
+from .models.user import User, CustomerProfile, ConsultantProfile, ConstructionProfile, InteriorProfile, MaintenanceProfile, SmartHomeProfile, UserSubscription
 from .models.project import Phase, Quotation,Drawing,Revision,Document,Projects
 from .models import Referral
 
@@ -111,48 +111,92 @@ def send_subscription_email(sender, instance, created, **kwargs):
             recipient_list=[instance.user.email],
         )
 
+# --- Consolidated User Post-Save Actions ---
 @receiver(post_save, sender=User)
-def create_referral_code(sender, instance, created, **kwargs):
+def handle_new_user_created(sender, instance, created, **kwargs):
     if created:
-        Referral.objects.create(referrer=instance, code=f"REF-{str(uuid.uuid4().upper())}")
-        
-        
-@receiver(post_save, sender=User)
-def create_user_profile_and_send_welcome(sender, instance, created, **kwargs):
-    if created:
-        # Send Welcome Email
-        send_mail(
-            subject='Welcome to Ardy-App!',
-            message=f"Hi {instance.first_name or instance.username},\n\nWelcome to Ardy-App! We're excited to have you.",
-            from_email=settings.DEFAULT_FROM_EMAIL,
-            recipient_list=[instance.email],
-        )
+        print(f"[Signal] New user created: {instance.username}, Type: {instance.user_type}")
 
-        # Auto-create profile based on user_type
+        # 1. Create Referral Code
+        try:
+            referral, ref_created = Referral.objects.get_or_create(
+                referrer=instance,
+                defaults={'code': f"REF-{str(uuid.uuid4()).upper().replace('-', '')[:10]}"}
+            )
+            print(f"[Signal] Referral for {instance.username} {'created' if ref_created else 'retrieved'}: {referral.code}")
+        except Exception as e:
+            print(f"[Signal Error] Creating referral for {instance.username}: {e}")
+
+        # 2. Send Welcome Email
+        try:
+            send_mail(
+                subject='Welcome to Ardy-App!',
+                message=f"Hi {instance.first_name or instance.username},\n\nWelcome to Ardy-App! We're excited to have you.",
+                from_email=settings.DEFAULT_FROM_EMAIL,
+                recipient_list=[instance.email],
+                fail_silently=False, # Good for dev, consider True for prod with logging
+            )
+            print(f"[Signal] Welcome email sent to {instance.email}")
+        except Exception as e:
+            print(f"[Signal Error] Sending welcome email to {instance.email}: {e}")
+
+        # 3. Auto-create Profile based on user_type
         user_type_str = instance.user_type
-        if user_type_str == 'Customer':
-            CustomerProfile.objects.get_or_create(user=instance)
-        elif user_type_str == 'Consultant':
-            ConsultantProfile.objects.get_or_create(user=instance)
-        elif user_type_str == 'Interior Designer':
-            InteriorProfile.objects.get_or_create(user=instance)
-        elif user_type_str == 'Construction':
-            ConstructionProfile.objects.get_or_create(user=instance)
-        elif user_type_str == 'Maintenance':
-            MaintainanceProfile.objects.get_or_create(user=instance)
-        elif user_type_str == 'Smart_Home':
-            SmartHomeProfile.objects.get_or_create(user=instance)
-            # Notify admin if it's a service provider type needing approval
-        
+        print(f"[Signal] Attempting to create profile for type: {user_type_str}")
+        profile_created_successfully = False
+        try:
+            if user_type_str == 'Customer':
+                profile, p_created = CustomerProfile.objects.get_or_create(user=instance)
+                if p_created: print(f"[Signal] CustomerProfile created for {instance.username}")
+                profile_created_successfully = True
+            elif user_type_str == 'Consultant':
+                profile, p_created = ConsultantProfile.objects.get_or_create(user=instance)
+                if p_created: print(f"[Signal] ConsultantProfile created for {instance.username}")
+                profile_created_successfully = True
+            elif user_type_str == 'Interior Designer':
+                profile, p_created = InteriorProfile.objects.get_or_create(user=instance)
+                if p_created: print(f"[Signal] InteriorProfile created for {instance.username}")
+                profile_created_successfully = True
+            elif user_type_str == 'Construction':
+                profile, p_created = ConstructionProfile.objects.get_or_create(user=instance)
+                if p_created: print(f"[Signal] ConstructionProfile created for {instance.username}")
+                profile_created_successfully = True
+            elif user_type_str == 'Maintenance': # Check spelling consistency
+                profile, p_created = MaintenanceProfile.objects.get_or_create(user=instance) # Check spelling
+                if p_created: print(f"[Signal] MaintenanceProfile created for {instance.username}")
+                profile_created_successfully = True
+            elif user_type_str == 'Smart_Home': # Check 'Smart_Home' vs 'Smart Home' from constants
+                profile, p_created = SmartHomeProfile.objects.get_or_create(user=instance)
+                if p_created: print(f"[Signal] SmartHomeProfile created for {instance.username}")
+                profile_created_successfully = True
+            else:
+                print(f"[Signal Warning] Unknown user_type '{user_type_str}' for profile creation for user {instance.username}.")
+
+            if not profile_created_successfully and user_type_str not in ['Admin']: # Assuming Admins might not need these profiles
+                print(f"[Signal Error] Profile NOT created for {instance.username} of type {user_type_str} but was expected.")
+
+        except Exception as e:
+            print(f"[Signal Error] Creating profile for {instance.username} of type {user_type_str}: {e}")
+
+        # 4. Notify admin if it's a service provider type needing approval
         if user_type_str in SERVICE_PROVIDER_USER_TYPES_REQUIRING_APPROVAL:
-            admin_emails = User.objects.filter(user_type='Admin', is_staff=True).values_list('email', flat=True)
-            if admin_emails:
-                send_mail(
-                    subject='New Service Provider Registration for Approval',
-                    message=f"User {instance.username} ({instance.email}) has registered as a {instance.get_user_type_display()} and needs approval.",
-                    from_email=settings.DEFAULT_FROM_EMAIL,
-                    recipient_list=list(admin_emails),
-                )
-            # ... add elif for other service provider types ...
-        
-        
+            try:
+                admin_emails = User.objects.filter(user_type='Admin', is_staff=True, is_active=True).values_list('email', flat=True)
+                if admin_emails:
+                    send_mail(
+                        subject='New Service Provider Registration for Approval',
+                        message=f"User {instance.username} ({instance.email}) has registered as a {instance.get_user_type_display()} and may need approval.",
+                        from_email=settings.DEFAULT_FROM_EMAIL,
+                        recipient_list=list(admin_emails),
+                        fail_silently=False,
+                    )
+                    print(f"[Signal] Admin notification sent for new SP: {instance.username}")
+                else:
+                    print(f"[Signal Warning] No active admin users found to notify for new SP: {instance.username}")
+            except Exception as e:
+                print(f"[Signal Error] Notifying admin for new SP {instance.username}: {e}")
+
+# REMOVE the other two User post_save handlers:
+# - create_referral_code (its logic is now in handle_new_user_created)
+# - user_post_save_actions (this was incomplete/redundant)
+# - create_user_profile_and_send_welcome (its logic is now in handle_new_user_created)
