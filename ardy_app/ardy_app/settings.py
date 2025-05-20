@@ -188,3 +188,5 @@ CHANNEL_LAYERS = {
 CORS_ALLOWED_ORIGINS = [
     'http://localhost:3000',
 ]
+
+DEFAULT_FROM_EMAIL = 'noreply@ardy-app.com'

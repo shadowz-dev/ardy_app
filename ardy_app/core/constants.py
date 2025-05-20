@@ -15,8 +15,16 @@ STATUS_CHOICES = [
     ('Accepted', 'Accepted'),
     ('In Progress', 'In Progress'),
     ('Completed', 'Completed'),
-    ('Cancelled', 'Cancelled')
+    ('Cancelled', 'Cancelled'),
+    ('Rejected', 'Rejected'),
 ]
+
+STATUS_PENDING = 'Pending'
+STATUS_ACCEPTED = 'Accepted'
+STATUS_IN_PROGRESS = 'In Progress'
+STATUS_COMPLETED = 'Completed'
+STATUS_CANCELLED = 'Cancelled'
+STATUS_REJECTED = 'Rejected' # Added
 
 BUILDING_CHOICES = [
     ('G+0', 'G+0'),
@@ -35,4 +43,8 @@ UserOTP=[
     ('signup', 'Signup'),
     ('reset_password', 'Reset Password'),
     ('phone_verification', 'Phone Verification'),
+]
+
+SERVICE_PROVIDER_USER_TYPES_REQUIRING_APPROVAL = [
+    'Consultant', 'Interior Designer', 'Construction', 'Maintenance', 'Smart_Home' # Match values from USER_TYPES
 ]

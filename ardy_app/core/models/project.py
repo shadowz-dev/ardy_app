@@ -2,28 +2,11 @@
 from django.db import models, transaction
 from django.utils import timezone
 from django.utils.text import slugify
+from django.core.mail import send_mail
 
 #Users Imports
 from .user import *
 from ..constants import *
-
-_status_map = {name: value for value, name in STATUS_CHOICES}
-
-STATUS_PENDING = 'Pending'
-STATUS_ACCEPTED = 'Accepted' 
-STATUS_IN_PROGRESS = 'In Progress'
-STATUS_COMPLETED = 'Completed'
-STATUS_CANCELLED = 'Cancelled'
-
-_defined_statuses = {STATUS_PENDING, STATUS_ACCEPTED, STATUS_IN_PROGRESS, STATUS_COMPLETED, STATUS_CANCELLED}
-_actual_status_values = {val[0] for val in STATUS_CHOICES}
-if not _defined_statuses.issubset(_actual_status_values):
-    raise ValueError(
-        "Mismatch between defined status constants and STATUS_CHOICES in constants.py. "
-        f"Defined: {_defined_statuses}, Actual DB values in STATUS_CHOICES: {_actual_status_values}"
-    )
-if len(_defined_statuses) != len(_actual_status_values):
-    print(f"Warning: Some statuses in STATUS_CHOICES might not have corresponding constants defined for use in logic (Defined: {_defined_statuses}, Actual: {_actual_status_values})")
 
 class ActiveProjectsManager(models.Manager):
     def get_queryset(self):
@@ -247,6 +230,8 @@ class Projects(models.Model):
         Marks the entire project as completed.
         Ensures all active phases are completed (unless force_complete is True).
         """
+        if self.status == STATUS_COMPLETED:
+            return # =
         if not force_complete:
             # Check if there's an active phase that isn't completed
             if self.active_phase and self.active_phase.status not in [STATUS_COMPLETED, STATUS_CANCELLED]:
@@ -268,7 +253,28 @@ class Projects(models.Model):
         if not self.actual_end_date:
             self.actual_end_date = timezone.now()
         self.save()
-        # TODO: Create notifications: Project Completed.
+        try:
+            customer_user = self.customer.user
+            send_mail(
+                subject=f"Project {self.title} completed",
+                message=f"Dear {customer_user.first_name or customer_user.username}, \n\nYour project '{self.title}' has been marked as completed.",
+                from_email=settings.DEFAULT_FROM_EMAIL,
+                recipient_list=[customer_user.email],
+                fail_silently=False,
+            )
+            if self.primary_service_provider and self.primary_service_provider.email:
+                send_mail(
+                    subject=f"Project '{self.title}' Marked as Complete",
+                    message=f"Dear {self.primary_service_provider.first_name or self.primary_service_provider.username},\n\nThe project '{self.title}' (Customer: {customer_user.username}) has been marked as completed.",
+                    from_email=settings.DEFAULT_FROM_EMAIL,
+                    recipient_list=[self.primary_service_provider.email],
+                    fail_silently=False,
+                )
+                
+        except AttributeError as e:
+            print(f"Error sending project completion notification for Project ID {self.id} (AttributeError): {e}")
+        except Exception as e:
+            print(f"General error sending project completion notification for Project ID {self.id}: {e}")
         # TODO: Trigger final payment releases, etc.
 
     @transaction.atomic
@@ -366,6 +372,80 @@ class Quotation(models.Model):
     def __str__(self):
         phase_title = f" for Phase: {self.phase.title}" if self.phase else ""
         return f"Quotation {self.id} for Project {self.project.title} {phase_title} - Service Provider: {self.service_provider.username}"
+    
+    def _can_transition_status(self, new_status):
+        if self.status not in [STATUS_PENDING]:
+            return False, f"Quotation is already {self.get_status_display()} and cannot be changed."
+        if new_status not in [STATUS_ACCEPTED, STATUS_REJECTED]:
+            return False, f"Invalid target status '{new_status}' for quotation."
+        return True, ""
+    
+    @transaction.atomic
+    def approve(self, approving_user): # Pass the user who is approving
+        """ Approves the quotation. """
+        can_transition, msg = self._can_transition_status(STATUS_ACCEPTED)
+        if not can_transition:
+            raise ValueError(msg)
+
+        self.status = STATUS_ACCEPTED
+        self.approved_at = timezone.now() 
+        self.save()
+
+        try:
+            provider_email = self.service_provider.email
+            message_body = (
+                f"Dear {self.service_provider.first_name or self.service_provider.username},\n\n"
+                f"Your quotation of type '{self.type}' for project '{self.project.title}' "
+                f"(Customer: {self.project.customer.user.username}) has been APPROVED.\n\n"
+                f"Approved by: {approving_user.username}"
+            )
+            send_mail(
+                subject=f"Quotation Approved: {self.type} for Project {self.project.title}",
+                message=message_body,
+                from_email=settings.DEFAULT_FROM_EMAIL,
+                recipient_list=[provider_email],
+                fail_silently=False,
+            )
+            # TODO: Trigger payment process for this quotation if applicable
+        except AttributeError as e:
+            print(f"Error sending quotation approval notification for Quotation ID {self.id} (AttributeError): {e}")
+        except Exception as e:
+            print(f"General error sending quotation approval notification for Quotation ID {self.id}: {e}")
+        # --- End Notification Logic ---
+
+    @transaction.atomic
+    def reject(self, rejecting_user, reason=""): # Pass user and optional reason
+        """ Rejects the quotation. """
+        can_transition, msg = self._can_transition_status(STATUS_REJECTED)
+        if not can_transition:
+            raise ValueError(msg)
+
+        self.status = STATUS_REJECTED
+        self.rejection_reason = reason # If you add such a field
+        self.save()
+
+        # --- Notification Logic Moved Here ---
+        try:
+            provider_email = self.service_provider.email
+            message_body = (
+                f"Dear {self.service_provider.first_name or self.service_provider.username},\n\n"
+                f"Your quotation of type '{self.type}' for project '{self.project.title}' "
+                f"(Customer: {self.project.customer.user.username}) has been REJECTED.\n\n"
+                f"Rejected by: {rejecting_user.username}"
+                + (f"\nReason: {reason}" if reason else "")
+            )
+            send_mail(
+                subject=f"Quotation Rejected: {self.type} for Project {self.project.title}",
+                message=message_body,
+                from_email=settings.DEFAULT_FROM_EMAIL,
+                recipient_list=[provider_email],
+                fail_silently=False,
+            )
+        except AttributeError as e:
+            print(f"Error sending quotation rejection notification for Quotation ID {self.id} (AttributeError): {e}")
+        except Exception as e:
+            print(f"General error sending quotation rejection notification for Quotation ID {self.id}: {e}")
+        # --- End Notification Logic ---
 
 
 class Drawing(models.Model):
