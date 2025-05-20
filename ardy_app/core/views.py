@@ -7,6 +7,7 @@ from django.http import JsonResponse
 from django.utils.deprecation import MiddlewareMixin
 from decimal import Decimal
 from django.utils import timezone
+from django.db.models import Q
 
 from knox.models import AuthToken
 from knox.views import LoginView as KnoxLoginView
@@ -14,8 +15,9 @@ from rest_framework.authtoken.serializers import AuthTokenSerializer # Used by K
 
 from .models.user import (
     User, CustomerProfile, ConsultantProfile, InteriorProfile, ConstructionProfile,
-    MaintainanceProfile, SmartHomeProfile, SubscriptionPlan, UserSubscription, Referral
+    MaintainanceProfile, SmartHomeProfile, SubscriptionPlan, UserSubscription
 )
+from .models import Referral
 from .models.project import (
     Projects, Phase, Quotation, Drawing, Revision, Document
 )
@@ -131,7 +133,7 @@ class ProjectsViewSet(viewsets.ModelViewSet):
         elif user.user_type in ['Consultant', 'Construction', 'Interior Designer', 'Maintainance', 'Smart Home']:
             # Service providers see projects they are primary on or assigned to a phase in
             return Projects.objects.filter(
-                models.Q(primary_service_provider=user) | models.Q(phases__service_provider=user)
+                Q(primary_service_provider=user) | Q(phases__service_provider=user)
             ).distinct()
         elif user.is_staff or user.user_type == 'Admin': # Admin/staff can see all
             return Projects.objects.all()
@@ -316,7 +318,7 @@ class DrawingViewSet(viewsets.ModelViewSet):
         if user.user_type == 'Customer':
             return Drawing.objects.filter(project__customer__user=user)
         # Add logic for service providers to see drawings they uploaded or for projects they are on
-        return Drawing.objects.filter(models.Q(project__customer__user=user) | models.Q(uploaded_by=user) | models.Q(project__phases__service_provider=user)).distinct()
+        return Drawing.objects.filter(Q(project__customer__user=user) | Q(uploaded_by=user) | Q(project__phases__service_provider=user)).distinct()
 
 
     def perform_create(self, serializer):
@@ -364,7 +366,7 @@ class DocumentViewSet(viewsets.ModelViewSet):
         if user.user_type == 'Customer':
             return Drawing.objects.filter(project__customer__user=user)
         # Add logic for service providers to see drawings they uploaded or for projects they are on
-        return Drawing.objects.filter(models.Q(project__customer__user=user) | models.Q(uploaded_by=user) | models.Q(project__phases__service_provider=user)).distinct()
+        return Drawing.objects.filter(Q(project__customer__user=user) | Q(uploaded_by=user) | Q(project__phases__service_provider=user)).distinct()
 
 
     def perform_create(self, serializer):
@@ -404,3 +406,28 @@ class SubscribeToPlanView(generics.CreateAPIView):
 
 # (SubscriptionMiddleware and ApplySubPromoCodeView can remain similar, ensure apply_sub_promo_code is robust)
 # (ReferralListView can remain similar)
+
+class ApplySubPromoCodeView(generics.GenericAPIView): # Changed from CreateAPIView if only post is needed
+    # serializer_class = SubPromoCodeSerializer # Optional if not directly using it for input validation here
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request, *args, **kwargs):
+        promo_code_value = request.data.get('promo_code') # Changed from 'promo_code' to avoid clash if serializer used this
+        if not promo_code_value:
+            return Response({'error': 'Promo code is required.'}, status=status.HTTP_400_BAD_REQUEST)
+        try:
+            # Assuming apply_sub_promo_code takes the user and the code string
+            discount_percent = apply_sub_promo_code(request.user, promo_code_value)
+            return Response({'success': True, 'discount_percent': discount_percent}, status=status.HTTP_200_OK)
+        except ValueError as e: # Catch specific errors from your utility
+            return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e: # General catch
+            return Response({'error': 'An unexpected error occurred processing the promo code.'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+class ReferralListView(generics.ListAPIView):
+    serializer_class = ReferralSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        # Users can only see their own referrals (referrals they made)
+        return Referral.objects.filter(referrer=self.request.user)
