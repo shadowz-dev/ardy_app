@@ -19,7 +19,10 @@ def land_attachment_upload_path(instance, filename):
 
 def drawing_upload_path(instance, filename):
     project_id_str = str(instance.project_id)
-    return os.path.join('projects', project_id_str, "drawings" ,f"v{instance.version}_{slugify(filename)}")
+    name, ext = os.path.splitext(filename)
+    slugified_name = slugify(name)
+    final_filename_part = f"v{instance.version}_{slugified_name}{ext.lower()}"
+    return os.path.join('projects', project_id_str, "drawings", final_filename_part)
 
 def general_document_upload_path(instance, filename):
     project_id_str = str(instance.project_id) if instance.project_id else "general_documents"

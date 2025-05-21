@@ -122,6 +122,7 @@ class RevisionSerializer(serializers.ModelSerializer):
     class Meta:
         model = Revision
         fields = ['id', 'drawing', 'customer', 'comment', 'requested_at', 'resolved','resolved_at']
+        read_only_fields = ['customer', 'requested_at', 'resolvet_at', 'resolved']
 
 class DocumentSerializer(serializers.ModelSerializer):
     class Meta:
