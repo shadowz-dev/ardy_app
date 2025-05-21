@@ -25,7 +25,7 @@ urlpatterns = [
     path('api/auth/logoutall/', knox_views.LogoutAllView.as_view(), name='knox_logoutall'),
 
     # Allauth URLs (if you are using it for social auth, password reset etc.)
-    # path('accounts/', include('allauth.urls')), # Keep if used
+    path('accounts/', include('allauth.urls')), # Keep if used
 
     # Profile URLs (Example for retrieving/updating own profile)
     # Assumes your UserProfileView subclasses are named ...DetailView
@@ -33,7 +33,7 @@ urlpatterns = [
     path('api/profiles/consultant/', ConsultantProfileDetailView.as_view(), name='consultant-profile-detail'),
     path('api/profiles/interior/', InteriorProfileDetailView.as_view(), name='interior-profile-detail'),
     path('api/profiles/construction/', ConstructionProfileDetailView.as_view(), name='construction-profile-detail'),
-    path('api/profiles/maintainance/', MaintenanceProfileDetailView.as_view(), name='maintainance-profile-detail'), # Check spelling
+    path('api/profiles/maintenance/', MaintenanceProfileDetailView.as_view(), name='maintenance-profile-detail'), # Check spelling
     path('api/profiles/smarthome/', SmartHomeProfileDetailView.as_view(), name='smarthome-profile-detail'),
 
     # Subscription URLs

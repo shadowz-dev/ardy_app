@@ -6,8 +6,7 @@ User = get_user_model()
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
-        fields = ['id', 'username', 'email', 'password', 'user_type','phone','first_name', 'last_name','birthday','news_letter','offers_and_discounts','date_joined']
-        extra_kwargs = {'password': {'write_only': True}}
+        fields = ['id', 'username', 'email', 'user_type','phone','first_name', 'last_name','birthday','news_letter','offers_and_discounts','date_joined']
 
     def create(self, validated_data):
         user = User.objects.create_user(**validated_data)
@@ -20,46 +19,40 @@ class LandDetailSerializer(serializers.ModelSerializer):
     
 class CustomerProfileSerializer(serializers.ModelSerializer):
     land_details = LandDetailSerializer(many=True, read_only=True)
-    user_details = UserSerializer(source='user', read_only=True)
-    user = serializers.PrimaryKeyRelatedField(queryset=User.objects.all(), write_only=True)
+    user = UserSerializer(read_only=True)
     class Meta:
         model = CustomerProfile
-        fields = ['user','user_details' ,'budget','property_status','project_details','attachments','land_details']
+        fields = ['user','budget','property_status','project_details','attachments','land_details']
 
 class ConsultantProfileSerializer(serializers.ModelSerializer):
-    user_details = UserSerializer(source='user', read_only=True)
-    user = serializers.PrimaryKeyRelatedField(queryset=User.objects.all(), write_only=True)
+    user = UserSerializer(read_only=True)
     class Meta:
         model = ConsultantProfile
-        fields = ['user','user_details' ,'company_name','expertise','experience','portfolio','introduction','projects_completed','company_profile']
+        fields = ['user','company_name','expertise','experience','portfolio','introduction','projects_completed','company_profile']
 
 class InteriorProfileSerializer(serializers.ModelSerializer):
-    user_details = UserSerializer(source='user', read_only=True)
-    user = serializers.PrimaryKeyRelatedField(queryset=User.objects.all(), write_only=True)
+    user = UserSerializer(read_only=True)
     class Meta:
         model = InteriorProfile
-        fields = ['user','user_details' ,'company_name','expertise','experience','portfolio','introduction','projects_completed','company_profile']
+        fields = ['user','company_name','expertise','experience','portfolio','introduction','projects_completed','company_profile']
 
 class ConstructionProfileSerializer(serializers.ModelSerializer):
-    user_details = UserSerializer(source='user', read_only=True)
-    user = serializers.PrimaryKeyRelatedField(queryset=User.objects.all(), write_only=True)
+    user = UserSerializer(read_only=True)
     class Meta:
         model = ConstructionProfile
-        fields = ['user','user_details' ,'company_name','expertise','experience','portfolio','introduction','projects_completed','company_profile']
+        fields = ['user','company_name','expertise','experience','portfolio','introduction','projects_completed','company_profile']
 
 class MaintenanceProfileSerializer(serializers.ModelSerializer):  
-    user_details = UserSerializer(source='user', read_only=True)
-    user = serializers.PrimaryKeyRelatedField(queryset=User.objects.all(), write_only=True)
+    user = UserSerializer(read_only=True)
     class Meta:
         model = MaintenanceProfile 
-        fields = ['user','user_details' ,'company_name','expertise','experience','portfolio','introduction','projects_completed','company_profile']
+        fields = ['user','company_name','expertise','experience','portfolio','introduction','projects_completed','company_profile']
 
 class SmartHomeProfileSerializer(serializers.ModelSerializer):
-    user_details = UserSerializer(source='user', read_only=True)
-    user = serializers.PrimaryKeyRelatedField(queryset=User.objects.all(), write_only=True)
+    user = UserSerializer(read_only=True)
     class Meta:
         model = SmartHomeProfile
-        fields = ['user','user_details' ,'company_name','expertise','experience','portfolio','introduction','projects_completed','company_profile']
+        fields = ['user','company_name','expertise','experience','portfolio','introduction','projects_completed','company_profile']
 
 #---------------------------------------------------Subscription Serializer --------------------------------
 class SubscriptionPlanSerializer(serializers.ModelSerializer):

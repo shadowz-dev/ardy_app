@@ -37,6 +37,8 @@ from .utils import apply_sub_promo_code # Assuming this utility exists
 
 # --- User Authentication & Registration ---
 
+
+
 class RegisterAPIView(generics.CreateAPIView): # Renamed from RegisterAPI
     """
     Handles new user registration.
@@ -63,6 +65,7 @@ class LoginAPIView(KnoxLoginView):
     permission_classes = [permissions.AllowAny]
 
     def post(self, request, format=None):
+        
         serializer = AuthTokenSerializer(data=request.data) # Standard DRF AuthTokenSerializer for credentials
         serializer.is_valid(raise_exception=True)
         user = serializer.validated_data['user']

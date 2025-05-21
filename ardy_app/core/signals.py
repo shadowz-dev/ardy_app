@@ -192,7 +192,7 @@ def handle_new_user_created(sender, instance, created, **kwargs):
                     )
                     print(f"[Signal] Admin notification sent for new SP: {instance.username}")
                 else:
-                    print(f"[Signal Warning] No active admin users found to notify for new SP: {instance.username}")
+                    pass#print(f"[Signal Warning] No active admin users found to notify for new SP: {instance.username}")
             except Exception as e:
                 print(f"[Signal Error] Notifying admin for new SP {instance.username}: {e}")
 

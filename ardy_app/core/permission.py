@@ -23,7 +23,7 @@ class IsMaintenance(BasePermission):
     
 class IsSmartHome(BasePermission):
     def has_permission(self, request, view):
-        return request.user.is_authenticated and request.user.user_type == "Smart Home"
+        return request.user.is_authenticated and request.user.user_type == "Smart_Home"
     
 class IsServiceProvider(BasePermission):
     def has_permission(self, request, view):
