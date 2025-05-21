@@ -1,32 +1,33 @@
 from rest_framework.permissions import BasePermission
+from .constants import *
 
 class IsCustomer(BasePermission):
     def has_permission(self, request, view):
-        return request.user.is_authenticated() and request.user.user_type == "Customer"
+        return request.user.is_authenticated and request.user.user_type == "Customer"
     
 class IsConsultant(BasePermission):
     def has_permission(self, request, view):
-        return request.user.is_authenticated() and request.user.user_type == "Consultant"
+        return request.user.is_authenticated and request.user.user_type == "Consultant"
     
 class IsInterior(BasePermission):
     def has_permission(self, request, view):
-        return request.user.is_authenticated() and request.user.user_type == "Interior Designer"
+        return request.user.is_authenticated and request.user.user_type == "Interior Designer"
     
 class IsConstruction(BasePermission):
     def has_permission(self, request, view):
-        return request.user.is_authenticated() and request.user.user_type == "Construction"
+        return request.user.is_authenticated and request.user.user_type == "Construction"
     
 class IsMaintenance(BasePermission):
     def has_permission(self, request, view):
-        return request.user.is_authenticated() and request.user.user_type == "Maintenance"
+        return request.user.is_authenticated and request.user.user_type == "Maintenance"
     
 class IsSmartHome(BasePermission):
     def has_permission(self, request, view):
-        return request.user.is_authenticated() and request.user.user_type == "Smart Home"
+        return request.user.is_authenticated and request.user.user_type == "Smart Home"
     
 class IsServiceProvider(BasePermission):
     def has_permission(self, request, view):
-        return request.user.is_authenticated() and request.user.user_type in ['Consultant','Interior Designer', 'Construction','Maintainance','Smart Home']
+        return request.user.is_authenticated and request.user.user_type in SERVICE_PROVIDER_USER_TYPES_REQUIRING_APPROVAL
     
 
 class IsPremiumUser(BasePermission):

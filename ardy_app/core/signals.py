@@ -115,7 +115,7 @@ def send_subscription_email(sender, instance, created, **kwargs):
 @receiver(post_save, sender=User)
 def handle_new_user_created(sender, instance, created, **kwargs):
     if created:
-        print(f"[Signal] New user created: {instance.username}, Type: {instance.user_type}")
+        #print(f"[Signal] New user created: {instance.username}, Type: {instance.user_type}")
 
         # 1. Create Referral Code
         try:
@@ -123,7 +123,7 @@ def handle_new_user_created(sender, instance, created, **kwargs):
                 referrer=instance,
                 defaults={'code': f"REF-{str(uuid.uuid4()).upper().replace('-', '')[:10]}"}
             )
-            print(f"[Signal] Referral for {instance.username} {'created' if ref_created else 'retrieved'}: {referral.code}")
+            #print(f"[Signal] Referral for {instance.username} {'created' if ref_created else 'retrieved'}: {referral.code}")
         except Exception as e:
             print(f"[Signal Error] Creating referral for {instance.username}: {e}")
 
@@ -136,39 +136,39 @@ def handle_new_user_created(sender, instance, created, **kwargs):
                 recipient_list=[instance.email],
                 fail_silently=False, # Good for dev, consider True for prod with logging
             )
-            print(f"[Signal] Welcome email sent to {instance.email}")
+            #print(f"[Signal] Welcome email sent to {instance.email}")
         except Exception as e:
             print(f"[Signal Error] Sending welcome email to {instance.email}: {e}")
 
         # 3. Auto-create Profile based on user_type
         user_type_str = instance.user_type
-        print(f"[Signal] Attempting to create profile for type: {user_type_str}")
+        #print(f"[Signal] Attempting to create profile for type: {user_type_str}")
         profile_created_successfully = False
         try:
             if user_type_str == 'Customer':
                 profile, p_created = CustomerProfile.objects.get_or_create(user=instance)
-                if p_created: print(f"[Signal] CustomerProfile created for {instance.username}")
-                profile_created_successfully = True
+                if p_created: #print(f"[Signal] CustomerProfile created for {instance.username}")
+                    profile_created_successfully = True
             elif user_type_str == 'Consultant':
                 profile, p_created = ConsultantProfile.objects.get_or_create(user=instance)
-                if p_created: print(f"[Signal] ConsultantProfile created for {instance.username}")
-                profile_created_successfully = True
+                if p_created: #print(f"[Signal] ConsultantProfile created for {instance.username}")
+                    profile_created_successfully = True
             elif user_type_str == 'Interior Designer':
                 profile, p_created = InteriorProfile.objects.get_or_create(user=instance)
-                if p_created: print(f"[Signal] InteriorProfile created for {instance.username}")
-                profile_created_successfully = True
+                if p_created: #print(f"[Signal] InteriorProfile created for {instance.username}")
+                    profile_created_successfully = True
             elif user_type_str == 'Construction':
                 profile, p_created = ConstructionProfile.objects.get_or_create(user=instance)
-                if p_created: print(f"[Signal] ConstructionProfile created for {instance.username}")
-                profile_created_successfully = True
+                if p_created: #print(f"[Signal] ConstructionProfile created for {instance.username}")
+                    profile_created_successfully = True
             elif user_type_str == 'Maintenance': # Check spelling consistency
                 profile, p_created = MaintenanceProfile.objects.get_or_create(user=instance) # Check spelling
-                if p_created: print(f"[Signal] MaintenanceProfile created for {instance.username}")
-                profile_created_successfully = True
+                if p_created: #print(f"[Signal] MaintenanceProfile created for {instance.username}")
+                    profile_created_successfully = True
             elif user_type_str == 'Smart_Home': # Check 'Smart_Home' vs 'Smart Home' from constants
                 profile, p_created = SmartHomeProfile.objects.get_or_create(user=instance)
-                if p_created: print(f"[Signal] SmartHomeProfile created for {instance.username}")
-                profile_created_successfully = True
+                if p_created: #print(f"[Signal] SmartHomeProfile created for {instance.username}")
+                    profile_created_successfully = True
             else:
                 print(f"[Signal Warning] Unknown user_type '{user_type_str}' for profile creation for user {instance.username}.")
 

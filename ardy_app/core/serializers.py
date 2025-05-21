@@ -88,25 +88,29 @@ class PhaseSerializer(serializers.ModelSerializer):
 class QuotationSerializer(serializers.ModelSerializer):
     phase_id = serializers.PrimaryKeyRelatedField(queryset=Phase.objects.all(), source='phase', write_only=True)
     phase_details = PhaseSerializer(source='phase', read_only=True)
+    service_provider = UserSerializer(read_only=True)
     class Meta:
         model = Quotation
         fields = ['id', 'project', 'phase_id','phase_details', 'service_provider', 'type', 'details', 'amount', 'status', 'submitted_at', 'updated_at', 'approved_at']
-        read_only_fields = ['submitted_at', 'updated_at']
+        read_only_fields = ['submitted_at', 'updated_at', 'phase_details']
 
 class ProjectsSerializer(serializers.ModelSerializer):
     phases = PhaseSerializer(many=True, read_only=True)
     active_phase_details = PhaseSerializer(source='active_phase', read_only=True)
+    customer = CustomerProfileSerializer(read_only=True)
     customer_username = serializers.CharField(source='customer.user.username', read_only=True)
-    land_detail_data = LandDetailSerializer(source='land_detail', read_only=True)
+    land_detail_info = LandDetailSerializer(source='land_detail', read_only=True)
     
     class Meta:
         model = Projects
         fields = [
-            'id', 'customer', 'primary_service_provider', 'land_detail', 'title', 'description',
-            'status', 'start_date', 'expected_end_date', 'actual_end_date',
-            'phases', 'active_phase_details', 'customer_username'
+            'id', 'customer', 'primary_service_provider', 
+            'land_detail', 'land_detail_info', 'title', 'description',
+            'status','active_phase', 'active_phase_details' , 
+            'start_date', 'expected_end_date', 'actual_end_date',
+            'phases', 'customer_username'
         ]
-        read_only_fields = ('status','active_phase' , 'start_date', 'actual_end_date')
+        read_only_fields = ('status','active_phase_details' , 'start_date', 'actual_end_date')
         
 class LandDetailSerializer(serializers.ModelSerializer):
     class Meta:

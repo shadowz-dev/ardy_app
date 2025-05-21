@@ -256,7 +256,7 @@ class Projects(models.Model):
         try:
             customer_user = self.customer.user
             send_mail(
-                subject=f"Project {self.title} completed",
+                subject=f"Your Project '{self.title}' is Complete!",
                 message=f"Dear {customer_user.first_name or customer_user.username}, \n\nYour project '{self.title}' has been marked as completed.",
                 from_email=settings.DEFAULT_FROM_EMAIL,
                 recipient_list=[customer_user.email],
