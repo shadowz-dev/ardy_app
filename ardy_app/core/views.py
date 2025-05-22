@@ -8,6 +8,7 @@ from django.utils.deprecation import MiddlewareMixin
 from decimal import Decimal
 from django.utils import timezone
 from django.db.models import Q
+from .constants import *
 
 from knox.models import AuthToken
 from knox.views import LoginView as KnoxLoginView
@@ -364,19 +365,53 @@ class DocumentViewSet(viewsets.ModelViewSet):
     permission_classes = [permissions.IsAuthenticated]
     
     def get_queryset(self):
-        # Filter based on user's projects or if they are the uploader
         user = self.request.user
-        if user.user_type == 'Customer':
-            return Drawing.objects.filter(project__customer__user=user)
-        # Add logic for service providers to see drawings they uploaded or for projects they are on
-        return Drawing.objects.filter(Q(project__customer__user=user) | Q(uploaded_by=user) | Q(project__phases__service_provider=user)).distinct()
+        project_id_param = self.request.query_params.get('project_id')
 
+        if user.is_staff or user.user_type == 'Admin':
+            if project_id_param:
+                return Document.objects.filter(project_id=project_id_param)
+            return Document.objects.all()
+
+        if user.user_type == 'Customer':
+            # Customers see all documents for projects they own
+            queryset = Document.objects.filter(project__customer__user=user)
+            if project_id_param: # If they specify a project_id, filter further
+                return queryset.filter(project_id=project_id_param)
+            return queryset # Otherwise, show docs from all their projects
+
+        elif user.user_type in SERVICE_PROVIDER_USER_TYPES_REQUIRING_APPROVAL: # Use your constant
+            # SPs see documents they uploaded, or for projects they are primary on,
+            # or for phases they are assigned to.
+            q_filters = Q(uploaded_by=user) | \
+                        Q(project__primary_service_provider=user) | \
+                        Q(phase__service_provider=user)
+            
+            queryset = Document.objects.filter(q_filters).distinct()
+            if project_id_param:
+                return queryset.filter(project_id=project_id_param)
+            return queryset
+        
+        return Document.objects.none() # Default for other unhandled roles
 
     def perform_create(self, serializer):
-        if self.request.user.user_type == 'Customer':
-            raise PermissionDenied("Customers cannot directly upload drawings.")
-        # Add logic to link project and phase correctly from request.data if not directly in serializer
-        serializer.save(uploaded_by=self.request.user)
+        user = self.request.user
+        # Allow customers to upload general project documents (no specific phase or their own phase)
+        # Allow service providers to upload documents to their assigned phases or projects
+        
+        # Example: Basic check - refined logic needed based on your rules
+        # For now, let's assume customers CAN upload documents.
+        # The more specific permission about *what kind* of document or *where*
+        # might be handled by serializer validation or more complex permission classes.
+
+        # If you want to restrict based on phase:
+        phase_instance = serializer.validated_data.get('phase')
+        if phase_instance and user.user_type == 'Customer':
+            raise PermissionDenied("Customers can only upload general project documents, not for specific phases managed by SPs.")
+        elif phase_instance and user != phase_instance.service_provider and not user.is_staff:
+            raise PermissionDenied("You can only upload documents to phases you are assigned to.")
+
+        serializer.save(uploaded_by=user) # General allowance for now
 
 
 # --- Subscription Views ---

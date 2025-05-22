@@ -491,6 +491,60 @@ class RevisionViewSetTests(APITestCase):
         self.assertEqual(len(response.data), 1)
         self.assertEqual(response.data[0]['comment'], "Rev 1")
 
+class DocumentViewSetTests(APITestCase):
+    def setUp(self):
+        self.client = APIClient()
+        self.customer_user = create_test_user_for_workflow(username_prefix="doc_cust", user_type="Customer")
+        self.customer_profile = CustomerProfile.objects.get(user=self.customer_user)
+        
+        self.sp_user = create_test_user_for_workflow(username_prefix="doc_sp", user_type="Consultant")
+
+        self.project = Projects.objects.create(customer=self.customer_profile, title="Project for Documents")
+        self.phase = Phase.objects.create(project=self.project, title="Doc Phase", order=1, service_provider=self.sp_user)
+
+        self.dummy_text_file = SimpleUploadedFile("project_info.txt", b"general project details", content_type="text/plain")
+        self.dummy_pdf_file = SimpleUploadedFile("phase_deliverable.pdf", b"phase specific content", content_type="application/pdf")
+        self.list_create_url = reverse('core:document-list') # Assuming 'document-list' from router
+
+    def test_customer_uploads_project_document(self):
+        self.client.force_authenticate(user=self.customer_user)
+        data = {
+            "project": self.project.pk, # Link to project, phase might be optional
+            "title": "Customer Uploaded Info",
+            "description": "Initial project brief by customer.",
+            "file": self.dummy_text_file
+        }
+        response = self.client.post(self.list_create_url, data, format='multipart')
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED, response.content.decode())
+        self.assertEqual(Document.objects.count(), 1)
+        doc = Document.objects.first()
+        self.assertEqual(doc.uploaded_by, self.customer_user)
+        self.assertEqual(doc.project, self.project)
+        self.assertIsNone(doc.phase) # Assuming customer uploads general project docs
+
+    def test_sp_uploads_phase_document(self):
+        self.client.force_authenticate(user=self.sp_user)
+        data = {
+            "project": self.project.pk, # Still good to link to project
+            "phase": self.phase.pk,    # Specifically for this phase
+            "title": "SP Phase Deliverable",
+            "file": self.dummy_pdf_file
+        }
+        response = self.client.post(self.list_create_url, data, format='multipart')
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED, response.content.decode())
+        doc = Document.objects.get(title="SP Phase Deliverable") # Be more specific
+        self.assertEqual(doc.uploaded_by, self.sp_user)
+        self.assertEqual(doc.phase, self.phase)
+
+    def test_list_documents_for_project_by_customer(self):
+        Document.objects.create(project=self.project, uploaded_by=self.customer_user, title="Doc1", file=self.dummy_text_file)
+        Document.objects.create(project=self.project, phase=self.phase, uploaded_by=self.sp_user, title="Doc2", file=self.dummy_pdf_file)
+        
+        self.client.force_authenticate(user=self.customer_user)
+        # Assuming get_queryset in DocumentViewSet filters by project for customer or shows all for project
+        response = self.client.get(self.list_create_url, {'project_id': self.project.pk}) 
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data), 2)
 
 # TODO:
 # - DocumentViewSetTests:
@@ -503,3 +557,9 @@ class RevisionViewSetTests(APITestCase):
 # - Add tests for retrieving single instances (detail views) for these viewsets.
 # - Add more specific permission failure tests for each action in all viewsets.
 # - Test any custom actions you add to these viewsets.
+
+ # Add tests for:
+    # - SP listing documents (maybe only their phase-specific ones, or all for projects they are on)
+    # - Unauthenticated access
+    # - Unauthorized upload attempts (e.g., SP trying to upload to another SP's phase if not allowed)
+    # - Retrieve, Update, Delete documents with permissions
