@@ -3,6 +3,7 @@ from django.db import models, transaction
 from django.utils import timezone
 from django.utils.text import slugify
 from django.core.mail import send_mail
+from django.db.models import Q
 
 #Users Imports
 from .user import *
@@ -46,7 +47,7 @@ class LandDetail(models.Model):
 
 class Projects(models.Model):
     customer = models.ForeignKey(CustomerProfile, on_delete=models.CASCADE, related_name="projects")
-    primary_service_provider = models.ForeignKey(User, on_delete=models.SET_NULL, blank=True, null=True, related_name="primary_projects", help_text="Main Service Provider if project is simple")
+    project_manager = models.ForeignKey(User, on_delete=models.SET_NULL, blank=True, null=True, related_name="managed_projects")
     land_detail = models.OneToOneField(LandDetail, on_delete=models.SET_NULL, blank=True, null=True, related_name="project")
     title = models.CharField(max_length=200)
     description = models.TextField(blank=True, null=True)
@@ -69,10 +70,71 @@ class Projects(models.Model):
         current_sp = self.get_current_service_provider()
         if current_sp:
             provider_info = current_sp.username
-        elif self.primary_service_provider:
-            provider_info = self.primary_service_provider.username
+        elif self.project_manager:
+            provider_info = self.project_manager.username
         return f"Project: {self.id}: {self.title} (Customer: {self.customer.user.username}) with {provider_info} (Status: {self.get_status_display()})"
     
+    def setup_initial_phases(self, entry_point_service_type_name=None, initial_documents_qs=None):
+        # Setup initial phase if service type is provided
+        with transaction.atomic():
+            if self.phases.exists():
+                return
+            standard_service_types = ServiceType.objects.filter(
+                is_standard_phase_service=True
+            ).order_by('default_order')
+
+            if not standard_service_types.exists():
+                print(f"Warning: No ServiceTypes marked as 'is_standard_phase_service=True'. Cannot auto-setup phases for Project {self.id}.")
+                return
+
+            start_creating_phases = entry_point_service_type_name is None
+            current_phase_order = 0  # This will be the actual order for the project's phases
+            first_created_phase_for_entry_point = None
+
+            for service_type in standard_service_types:
+                if not start_creating_phases and service_type.name == entry_point_service_type_name:
+                    start_creating_phases = True
+                
+                if start_creating_phases:
+                    phase_title = service_type.default_phase_title_template or service_type.name
+                    if "{}" in phase_title:
+                        phase_title = phase_title.format(self.title or "Project")
+                    else:
+                        phase_title = f"{service_type.name} for {self.title or 'Project'}"
+                    
+                    phase_description = service_type.default_phase_description_template or ""
+                    if "{}" in phase_description:
+                        phase_description = phase_description.format(self.title or "Project")
+                    
+                    phase = Phase.objects.create(
+                        project=self,
+                        title=phase_title,
+                        description=phase_description,
+                        required_service_type=service_type,
+                        order=current_phase_order
+                    )
+
+                    if current_phase_order == 0 and not self.active_phase:
+                        self.active_phase = phase
+                        # Store the very first phase created *after or at* the entry point
+                        if service_type.name == entry_point_service_type_name or entry_point_service_type_name is None:
+                            first_created_phase_for_entry_point = phase
+                    
+                    current_phase_order += 1
+            
+            # Link initial documents to the first relevant phase created
+            if first_created_phase_for_entry_point and initial_documents_qs:
+                for doc_instance in initial_documents_qs:
+                    # Ensure the document is also linked to the project if it's not already
+                    if not doc_instance.project:
+                        doc_instance.project = self
+                        doc_instance.save()
+                    first_created_phase_for_entry_point.customer_attachments.add(doc_instance)
+                    # print(f"Linked document {doc_instance.id} to phase {first_created_phase_for_entry_point.title}")
+
+            if self.active_phase: # Save project if active_phase was updated
+                self.save()
+                
 
     def _can_transition_project_status(self, new_status):
         # Basic linear progression, disallow going backwards from completed/cancelled
@@ -326,7 +388,6 @@ class Projects(models.Model):
 
 class Phase(models.Model):
     project = models.ForeignKey(Projects, on_delete=models.CASCADE, related_name="phases")
-    service_provider = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name="assigned_phases", help_text="Service Provider assigned to this phase")
     title = models.CharField(max_length=255, help_text="e.g Design, Foundation, Electrical Work")
     description = models.TextField(blank=True, null=True)
     order = models.PositiveIntegerField(default=0, help_text="Execution order of the phase")
@@ -334,6 +395,18 @@ class Phase(models.Model):
     start_date = models.DateTimeField(null=True, blank=True)
     expected_end_date = models.DateTimeField(null=True, blank=True)
     actual_end_date = models.DateTimeField(null=True, blank=True)
+    required_service_type = models.ForeignKey(
+        ServiceType, on_delete=models.SET_NULL, null=True, blank=True, help_text=" The primary type of service required for this phase."
+    )
+    service_provider = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True,
+        related_name="assigned_phases",
+        help_text="The service provider assigned to this phase.",
+        limit_choices_to={'user_type__in': [st[0] for st in SERVICE_PROVIDER_USER_TYPES_REQUIRING_APPROVAL]}
+    )
+    customer_attachement = models.ManyToManyField(
+        'Document', related_name="phase_customer_attachement", blank=True
+    )
 
     class Meta:
         ordering = ['project', 'order']
@@ -343,7 +416,22 @@ class Phase(models.Model):
         provider_username = self.service_provider.username if self.service_provider else "Unassigned"
         return f"Phase ({self.id}): {self.title} for Project {self.project.id} (Service Provider: {provider_username}, Status: {self.get_status_display()})"
     
-    
+    def get_suggested_providers(self):
+        if not self.required_service_type:
+            return User.objects.none()
+        provider_user_types = [st[0] for st in SERVICE_PROVIDER_USER_TYPES_REQUIRING_APPROVAL]
+        q_objects = Q()
+        profile_related_names = [
+            profile_model.user.field.remote_field.name
+            for profile_model in [ConsultantProfile, InteriorProfile, ConstructionProfile, MaintenanceProfile, SmartHomeProfile]
+        ]
+        for rel_name in profile_related_names:
+            q_objects |= Q(**{f"{rel_name}__services_offered": self.required_service_type})
+        if not q_objects:
+            return User.objects.none()
+        
+        return User.objects.filter(q_objects, user_type__in=provider_user_types).distinct()
+        
     def save(self, *args, **kwargs):
         is_new = self._state.adding
         old_status = None

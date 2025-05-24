@@ -93,6 +93,7 @@ class ProjectsSerializer(serializers.ModelSerializer):
     customer = CustomerProfileSerializer(read_only=True)
     customer_username = serializers.CharField(source='customer.user.username', read_only=True)
     land_detail_info = LandDetailSerializer(source='land_detail', read_only=True)
+    entry_point_service_name = serializers.CharField(write_only=True, required=False, allow_blank=True, help_text="Name of the ServiceType where the project should effectively start.")
     
     class Meta:
         model = Projects
@@ -101,7 +102,7 @@ class ProjectsSerializer(serializers.ModelSerializer):
             'land_detail', 'land_detail_info', 'title', 'description',
             'status','active_phase', 'active_phase_details' , 
             'start_date', 'expected_end_date', 'actual_end_date',
-            'phases', 'customer_username'
+            'phases', 'customer_username', 'entry_point_service_name'
         ]
         read_only_fields = ('status','active_phase_details' , 'start_date', 'actual_end_date')
         

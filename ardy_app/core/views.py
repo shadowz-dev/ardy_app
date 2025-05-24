@@ -148,7 +148,33 @@ class ProjectsViewSet(viewsets.ModelViewSet):
             raise PermissionDenied("Only customers can create projects.")
         try:
             customer_profile = CustomerProfile.objects.get(user=self.request.user)
-            serializer.save(customer=customer_profile)
+            # Handle initial documents if provided
+            initial_document_files = self.request.FILES.getlist('initial_documents_upload') # Example field name
+            uploaded_initial_documents = []
+            if initial_document_files:
+                for doc_file in initial_document_files:
+                    # Create Document instances - this part needs a robust way to handle document creation
+                    # You might have a simple DocumentSerializer for this
+                    # For simplicity, let's assume direct creation here (not ideal for full validation)
+                    doc_instance = Document.objects.create(
+                        uploaded_by=self.request.user,
+                        file=doc_file,
+                        title=f"Initial Document - {doc_file.name}",
+                        project=None # Project will be linked in setup_initial_phases
+                    )
+                    uploaded_initial_documents.append(doc_instance)
+
+            # Get entry point if specified by the client
+            entry_point_service_name = serializer.validated_data.pop('entry_point_service_name', None) # Assume this comes from request
+
+            project = serializer.save(customer=customer_profile) # Save project first
+            
+            # Now setup phases, passing the documents
+            project.setup_initial_phases(
+                entry_point_service_type_name=entry_point_service_name,
+                initial_documents_qs=uploaded_initial_documents if uploaded_initial_documents else None
+            )
+            
         except CustomerProfile.DoesNotExist:
             raise ValidationError("Customer profile not found for the current user.")
 

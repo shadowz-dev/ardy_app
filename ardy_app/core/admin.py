@@ -16,7 +16,7 @@ app = apps.get_app_config('core')
 from .models import (
     User, CustomerProfile, ConsultantProfile, InteriorProfile, ConstructionProfile,
     MaintenanceProfile, SmartHomeProfile, CompanyProfile, EmployeeRelationship,
-    UserOTP, SubscriptionPlan, UserSubscription, Referral, SubPromoCode
+    UserOTP, SubscriptionPlan, UserSubscription, Referral, SubPromoCode, ServiceType
 )
 from .models.project import (
     LandDetail, Projects, Phase, Quotation, Drawing, Revision, Document
@@ -225,7 +225,7 @@ class ProjectsAdmin(admin.ModelAdmin):
     ordering = ('-start_date',)
     inlines = [PhaseInline, QuotationInline, DrawingInline, DocumentInline]
     readonly_fields = ('start_date', 'actual_end_date') # These are often system-set
-    autocomplete_fields = ['customer', 'primary_service_provider', 'land_detail', 'active_phase']
+    autocomplete_fields = ['customer', 'land_detail', 'active_phase']
 
     def active_phase_display(self, obj):
         return obj.active_phase.title if obj.active_phase else "N/A"
@@ -313,6 +313,13 @@ class DocumentAdmin(admin.ModelAdmin):
     def title_display(self, obj):
         return obj.title or obj.file.name.split('/')[-1]
     title_display.short_description = 'Title/Filename'
+    
+@admin.register(ServiceType)
+class ServiceTypeAdmin(admin.ModelAdmin):
+    list_display = ('name', 'category', 'default_order', 'is_standard_phase_service')
+    list_filter = ('category', 'is_standard_phase_service')
+    search_fields = ('name', 'description')
+    list_editable = ('default_order', 'is_standard_phase_service') # Allow easy editing from list view
 
 # Register other models if they exist and you want to manage them
 admin.site.register(Lead)

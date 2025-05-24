@@ -37,7 +37,37 @@ class User(AbstractUser):
             return None
         except UserSubscription.MultipleObjectsReturned as e:
             print(e)
-    
+
+
+class ServiceType(models.Model):
+        name = models.CharField(max_length=100, unique=True)
+        description = models.TextField(blank=True)
+        category = models.CharField(max_length=50, choices=USER_TYPES)
+        
+        # New fields for dynamic phase setup:
+        default_order = models.PositiveIntegerField(
+            default=100, # Default to a high number if not part of standard flow
+            help_text="Default order in a standard project lifecycle (lower numbers first). Use unique numbers for standard flow."
+        )
+        is_standard_phase_service = models.BooleanField(
+            default=False,
+            help_text="Include this service type when setting up standard project phases?"
+        )
+        default_phase_title_template = models.CharField(
+            max_length=150,
+            blank=True, null=True,
+            help_text="Template for the phase title, e.g., 'Initial {} Design'. '{}' will be project title."
+        )
+        default_phase_description_template = models.TextField(
+            blank=True, null=True,
+            help_text="Template for the phase description. '{}' will be project title."
+        )
+        
+        class Meta:
+            ordering = ['default_order', 'name']
+        
+        def __str__(self):
+            return self.name
 
 def company_profile_upload_path(instance, filename):
     # file will be uploaded to MEDIA_ROOT/company_profiles/<company_name>/<year>/<month>/<day>/<filename>
@@ -74,22 +104,27 @@ class CustomerProfile(models.Model):
         return f"{self.user.username} - Customer Profile"
 
 class ConsultantProfile(BaseProfile):
+    services_offered = models.ManyToManyField(ServiceType, blank=True, related_name='consultant_services_offered')
     def __str__(self):
         return f"{self.user.username} - Consultant Profile"
 
 class InteriorProfile(BaseProfile):
+    services_offered = models.ManyToManyField(ServiceType, blank=True, related_name='interior_services_offered')
     def __str__(self):
         return f"{self.user.username} - Interior Profile"
 
 class ConstructionProfile(BaseProfile):
+    services_offered = models.ManyToManyField(ServiceType, blank=True, related_name='construction_services_offered')
     def __str__(self):
         return f"{self.user.username} - Construction Profile"
 
 class MaintenanceProfile(BaseProfile):
+    services_offered = models.ManyToManyField(ServiceType, blank=True, related_name='maintenance_services_offered')
     def __str__(self):
         return f"{self.user.username} - Maintenance Profile"
 
 class SmartHomeProfile(BaseProfile):
+    services_offered = models.ManyToManyField(ServiceType, blank=True, related_name='smart_services_offered')
     def __str__(self):
         return f"{self.user.username} - SmartHome Profile"
 
