@@ -404,8 +404,8 @@ class Phase(models.Model):
         help_text="The service provider assigned to this phase.",
         limit_choices_to={'user_type__in': [st[0] for st in SERVICE_PROVIDER_USER_TYPES_REQUIRING_APPROVAL]}
     )
-    customer_attachement = models.ManyToManyField(
-        'Document', related_name="phase_customer_attachement", blank=True
+    customer_attachements = models.ManyToManyField(
+        'Document', related_name="attached_to_phases", blank=True
     )
 
     class Meta:
@@ -419,23 +419,22 @@ class Phase(models.Model):
     def get_suggested_providers(self):
         if not self.required_service_type:
             return User.objects.none()
-        provider_user_types = [st[0] for st in SERVICE_PROVIDER_USER_TYPES_REQUIRING_APPROVAL]
         q_objects = Q()
-        profile_related_names = [
-            profile_model.user.field.remote_field.name
-            for profile_model in [ConsultantProfile, InteriorProfile, ConstructionProfile, MaintenanceProfile, SmartHomeProfile]
-        ]
-        for rel_name in profile_related_names:
-            q_objects |= Q(**{f"{rel_name}__services_offered": self.required_service_type})
-        if not q_objects:
-            return User.objects.none()
-        
-        return User.objects.filter(q_objects, user_type__in=provider_user_types).distinct()
+        return User.objects.filter(
+            Q(consultantprofile__services_offered=self.required_service_type) |
+            Q(interiorprofile__services_offered=self.required_service_type) |
+            Q(constructionprofile__services_offered=self.required_service_type) |
+            Q(maintenanceprofile__services_offered=self.required_service_type) |
+            Q(smarthomeprofile__services_offered=self.required_service_type)
+        ).filter(
+            is_active=True, # Only suggest active providers
+            user_type__in=[st[0] for st in SERVICE_PROVIDER_USER_TYPES_REQUIRING_APPROVAL] # Ensure they are SPs
+        ).distinct()
         
     def save(self, *args, **kwargs):
         is_new = self._state.adding
         old_status = None
-        if not is_new:
+        if not is_new and self.pk:
             try:
                 # Get status before save
                 old_status = Phase.objects.get(pk=self.pk).status

@@ -12,6 +12,16 @@ class UserSerializer(serializers.ModelSerializer):
         user = User.objects.create_user(**validated_data)
         return user
     
+class ServiceTypeSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ServiceType
+        fields = ['id', 'name', 'description', 'category', 
+                'default_order', 'is_standard_phase_service', 
+                'default_phase_title_template', 'default_phase_description_template']
+        # Make config fields read-only if clients shouldn't set them via API
+        read_only_fields = ['default_order', 'is_standard_phase_service', 
+                            'default_phase_title_template', 'default_phase_description_template']
+
 class LandDetailSerializer(serializers.ModelSerializer):
     class Meta:
         model = LandDetail
@@ -26,33 +36,88 @@ class CustomerProfileSerializer(serializers.ModelSerializer):
 
 class ConsultantProfileSerializer(serializers.ModelSerializer):
     user = UserSerializer(read_only=True)
+    services_offered = ServiceTypeSerializer(many=True, read_only=True)
+    services_offered_ids = serializers.PrimaryKeyRelatedField(
+        queryset=ServiceType.objects.all(),
+        many=True,
+        write_only=True,
+        source='services_offered',
+        required=False
+    )
     class Meta:
         model = ConsultantProfile
-        fields = ['user','company_name','expertise','experience','portfolio','introduction','projects_completed','company_profile']
+        fields = ['user','company_name','expertise','experience','portfolio',
+                    'introduction','projects_completed','company_profile_doc',
+                    'services_offered','services_offered_ids']
+        read_only_fields = ['user']
 
 class InteriorProfileSerializer(serializers.ModelSerializer):
     user = UserSerializer(read_only=True)
+    services_offered = ServiceTypeSerializer(many=True, read_only=True)
+    services_offered_ids = serializers.PrimaryKeyRelatedField(
+        queryset=ServiceType.objects.all(),
+        many=True,
+        write_only=True,
+        source='services_offered',
+        required=False
+    )
     class Meta:
-        model = InteriorProfile
-        fields = ['user','company_name','expertise','experience','portfolio','introduction','projects_completed','company_profile']
+        model = ConsultantProfile
+        fields = ['user','company_name','expertise','experience','portfolio',
+                    'introduction','projects_completed','company_profile_doc',
+                    'services_offered','services_offered_ids']
+        read_only_fields = ['user']
 
 class ConstructionProfileSerializer(serializers.ModelSerializer):
     user = UserSerializer(read_only=True)
+    services_offered = ServiceTypeSerializer(many=True, read_only=True)
+    services_offered_ids = serializers.PrimaryKeyRelatedField(
+        queryset=ServiceType.objects.all(),
+        many=True,
+        write_only=True,
+        source='services_offered',
+        required=False
+    )
     class Meta:
-        model = ConstructionProfile
-        fields = ['user','company_name','expertise','experience','portfolio','introduction','projects_completed','company_profile']
+        model = ConsultantProfile
+        fields = ['user','company_name','expertise','experience','portfolio',
+                    'introduction','projects_completed','company_profile_doc',
+                    'services_offered','services_offered_ids']
+        read_only_fields = ['user']
 
 class MaintenanceProfileSerializer(serializers.ModelSerializer):  
     user = UserSerializer(read_only=True)
+    services_offered = ServiceTypeSerializer(many=True, read_only=True)
+    services_offered_ids = serializers.PrimaryKeyRelatedField(
+        queryset=ServiceType.objects.all(),
+        many=True,
+        write_only=True,
+        source='services_offered',
+        required=False
+    )
     class Meta:
-        model = MaintenanceProfile 
-        fields = ['user','company_name','expertise','experience','portfolio','introduction','projects_completed','company_profile']
+        model = ConsultantProfile
+        fields = ['user','company_name','expertise','experience','portfolio',
+                    'introduction','projects_completed','company_profile_doc',
+                    'services_offered','services_offered_ids']
+        read_only_fields = ['user']
 
 class SmartHomeProfileSerializer(serializers.ModelSerializer):
     user = UserSerializer(read_only=True)
+    services_offered = ServiceTypeSerializer(many=True, read_only=True)
+    services_offered_ids = serializers.PrimaryKeyRelatedField(
+        queryset=ServiceType.objects.all(),
+        many=True,
+        write_only=True,
+        source='services_offered',
+        required=False
+    )
     class Meta:
-        model = SmartHomeProfile
-        fields = ['user','company_name','expertise','experience','portfolio','introduction','projects_completed','company_profile']
+        model = ConsultantProfile
+        fields = ['user','company_name','expertise','experience','portfolio',
+                    'introduction','projects_completed','company_profile_doc',
+                    'services_offered','services_offered_ids']
+        read_only_fields = ['user']
 
 #---------------------------------------------------Subscription Serializer --------------------------------
 class SubscriptionPlanSerializer(serializers.ModelSerializer):
@@ -70,12 +135,28 @@ class UserSubscriptionSerializer(serializers.ModelSerializer):
 
 
 #---------------------------------------------------Quotations Serializer --------------------------------
+class DocumentSerializer(serializers.ModelSerializer):
+    uploaded_by_username = serializers.CharField(source='uploaded_by.username', read_only=True, allow_null=True)
+    class Meta:
+        model = Document
+        fields = ['id', 'project', 'phase', 'title', 'description', 'file', 
+                    'uploaded_by', 'uploaded_by_username', 'uploaded_at']
+        read_only_fields = ['uploaded_by', 'uploaded_by_username', 'uploaded_at']
+        
 class PhaseSerializer(serializers.ModelSerializer):
-    service_provider_username = serializers.CharField(source='service_provider.username', read_only=True)
+    service_provider_details = UserSerializer(source='service_provider', read_only=True) # Display SP details
+    required_service_type_details = ServiceTypeSerializer(source='required_service_type', read_only=True) # Display type details
+    customer_attachments = DocumentSerializer(many=True, read_only=True) # Display attachments
     class Meta:
         model = Phase
-        fields = ['id', 'project', 'service_provider','service_provider_username' , 'title', 'order', 'status', 'start_date', 'expected_end_date', 'actual_end_date']
-        read_only_fields = ['project']
+        fields = [
+            'id', 'project', 'title', 'description', 'order', 'status', 
+            'required_service_type', 'required_service_type_details',
+            'service_provider', 'service_provider_details',
+            'start_date', 'expected_end_date', 'actual_end_date',
+            'customer_attachments'
+        ]
+        read_only_fields = ('status', 'start_date', 'actual_end_date', 'service_provider_details', 'required_service_type_details', 'customer_attachments')
         
         
 class QuotationSerializer(serializers.ModelSerializer):
@@ -98,13 +179,16 @@ class ProjectsSerializer(serializers.ModelSerializer):
     class Meta:
         model = Projects
         fields = [
-            'id', 'customer', 'primary_service_provider', 
+            'id', 'customer', 'customer_username','project_manager', 
             'land_detail', 'land_detail_info', 'title', 'description',
             'status','active_phase', 'active_phase_details' , 
             'start_date', 'expected_end_date', 'actual_end_date',
-            'phases', 'customer_username', 'entry_point_service_name'
+            'phases', 'entry_point_service_name'
         ]
-        read_only_fields = ('status','active_phase_details' , 'start_date', 'actual_end_date')
+        read_only_fields = (
+            'customer_username', 'status', 'active_phase', 'active_phase_details', 'phases',
+            'start_date', 'actual_end_date'
+        )
         
 class LandDetailSerializer(serializers.ModelSerializer):
     class Meta:
@@ -125,13 +209,6 @@ class RevisionSerializer(serializers.ModelSerializer):
         fields = ['id', 'drawing', 'customer', 'comment', 'requested_at', 'resolved','resolved_at']
         read_only_fields = ['customer', 'requested_at', 'resolvet_at', 'resolved']
 
-class DocumentSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Document
-        fields = ['id', 'project', 'phase', 'uploaded_by', 'title', 'file', 'description', 'uploaded_at']
-        read_only_fields = ['uploaded_at']
-
-
 class SubPromoCodeSerializer(serializers.ModelSerializer):
     class Meta:
         model = SubPromoCode
@@ -141,5 +218,4 @@ class ReferralSerializer(serializers.ModelSerializer):
     class Meta:
         model = Referral
         fields = ['id', 'referrer', 'referred_user', 'code', 'reward', 'is_redeemed']
-
 

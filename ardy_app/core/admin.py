@@ -2,26 +2,40 @@ from django.contrib import admin
 from django.apps import apps
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 
-
-app = apps.get_app_config('core')
-
-#for model_name, model in app.models.items():
-#    try:
-#        admin.site.register(model)
-#    except admin.sites.AlreadyRegistered:
-#        pass
-
-# Import all your models from the core app
-# Adjust these imports based on your model file structure (e.g., .models.user, .models.project)
 from .models import (
     User, CustomerProfile, ConsultantProfile, InteriorProfile, ConstructionProfile,
     MaintenanceProfile, SmartHomeProfile, CompanyProfile, EmployeeRelationship,
-    UserOTP, SubscriptionPlan, UserSubscription, Referral, SubPromoCode, ServiceType
+    UserOTP, SubscriptionPlan, UserSubscription, Referral, SubPromoCode, ServiceType,LandDetail, Projects,
+    Phase, Quotation, Drawing, Revision, Document,
+    Lead, Milestone, Review, FeaturedListing, EngagementLog, Transaction
 )
-from .models.project import (
-    LandDetail, Projects, Phase, Quotation, Drawing, Revision, Document
-)
-from .models import Lead, Milestone, Review, FeaturedListing, EngagementLog, Transaction # If these are defined elsewhere
+
+class ServiceProviderProfileAdmin(admin.ModelAdmin): # A base admin for SP profiles
+    list_display = ('user', 'company_name', 'expertise', 'experience')
+    search_fields = ('user__username', 'company_name', 'expertise')
+    autocomplete_fields = ['user']
+    filter_horizontal = ('services_offered',) # Better UI for ManyToManyField
+    
+    def get_username(self, obj):
+        return obj.user.username
+    get_username.short_description = 'User'
+    get_username.admin_order_field = 'user__username'
+    
+@admin.register(ConsultantProfile)
+class ConsultantProfileAdmin(ServiceProviderProfileAdmin): # Inherit common settings
+    pass
+@admin.register(InteriorProfile)
+class InteriorProfileAdmin(ServiceProviderProfileAdmin):
+    pass
+@admin.register(ConstructionProfile)
+class ConstructionProfileAdmin(ServiceProviderProfileAdmin):
+    pass
+@admin.register(MaintenanceProfile)
+class MaintenanceProfileAdmin(ServiceProviderProfileAdmin):
+    pass
+@admin.register(SmartHomeProfile)
+class SmartHomeProfileAdmin(ServiceProviderProfileAdmin):
+    pass
 
 # --- User and Profile Admin ---
 
@@ -30,37 +44,14 @@ class CustomerProfileInline(admin.StackedInline): # Or admin.TabularInline for m
     can_delete = False
     verbose_name_plural = 'Customer Profile'
     fk_name = 'user'
+    fields = ('budget', 'property_status', 'project_details', 'attachments') # Explicitly list fields
 
-class ConsultantProfileInline(admin.StackedInline):
-    model = ConsultantProfile
-    can_delete = False
-    verbose_name_plural = 'Consultant Profile'
-    fk_name = 'user'
+class ConsultantProfileInline(admin.StackedInline): model = ConsultantProfile; can_delete=False; fk_name='user'; fields=('company_name', 'expertise', 'experience', 'portfolio', 'introduction', 'projects_completed', 'company_profile_doc', 'services_offered'); filter_horizontal=('services_offered',) # etc.
+class InteriorProfileInline(admin.StackedInline): model = InteriorProfile; can_delete=False; fk_name='user'; fields=('company_name', 'expertise', 'experience', 'portfolio', 'introduction', 'projects_completed', 'company_profile_doc', 'services_offered'); filter_horizontal=('services_offered',)
+class ConstructionProfileInline(admin.StackedInline): model = ConstructionProfile; can_delete=False; fk_name='user'; fields=('company_name', 'expertise', 'experience', 'portfolio', 'introduction', 'projects_completed', 'company_profile_doc', 'services_offered'); filter_horizontal=('services_offered',)
+class MaintenanceProfileInline(admin.StackedInline): model = MaintenanceProfile; can_delete=False; fk_name='user'; fields=('company_name', 'expertise', 'experience', 'portfolio', 'introduction', 'projects_completed', 'company_profile_doc', 'services_offered'); filter_horizontal=('services_offered',)
+class SmartHomeProfileInline(admin.StackedInline): model = SmartHomeProfile; can_delete=False; fk_name='user'; fields=('company_name', 'expertise', 'experience', 'portfolio', 'introduction', 'projects_completed', 'company_profile_doc', 'services_offered'); filter_horizontal=('services_offered',)
 
-# Create Inlines for Interior, Construction, Maintenance, SmartHome profiles similarly...
-class InteriorProfileInline(admin.StackedInline):
-    model = InteriorProfile
-    can_delete = False
-    verbose_name_plural = 'Interior Profile'
-    fk_name = 'user'
-
-class ConstructionProfileInline(admin.StackedInline):
-    model = ConstructionProfile
-    can_delete = False
-    verbose_name_plural = 'Construction Profile'
-    fk_name = 'user'
-
-class MaintenanceProfileInline(admin.StackedInline):
-    model = MaintenanceProfile
-    can_delete = False
-    verbose_name_plural = 'Maintenance Profile'
-    fk_name = 'user'
-
-class SmartHomeProfileInline(admin.StackedInline):
-    model = SmartHomeProfile
-    can_delete = False
-    verbose_name_plural = 'Smart Home Profile'
-    fk_name = 'user'
 
 class CompanyProfileInline(admin.StackedInline):
     model = CompanyProfile
@@ -76,10 +67,10 @@ class UserAdmin(BaseUserAdmin):
         # ('Referral Info', {'fields': ('referred_by_user_link',)}) # If you add a display field
     )
     add_fieldsets = BaseUserAdmin.add_fieldsets + (
-        (None, {'fields': ('user_type', 'phone')}),
+        (None, {'fields': ('user_type', 'phone', 'email')}),
     )
     list_display = ('username', 'email', 'first_name', 'last_name', 'is_staff', 'user_type', 'date_joined')
-    list_filter = BaseUserAdmin.list_filter + ('user_type', 'is_staff', 'is_superuser', 'is_active')
+    list_filter = BaseUserAdmin.list_filter + ('user_type',)
     search_fields = ('username', 'first_name', 'last_name', 'email', 'phone')
     ordering = ('username',)
     
@@ -111,17 +102,7 @@ class CustomerProfileAdmin(admin.ModelAdmin):
     autocomplete_fields = ['user']
 
 # Do similar for ConsultantProfile, InteriorProfile, etc. if desired
-@admin.register(ConsultantProfile)
-class ConsultantProfileAdmin(admin.ModelAdmin):
-    list_display = ('user', 'company_name', 'expertise', 'experience')
-    search_fields = ('user__username', 'company_name', 'expertise')
-    autocomplete_fields = ['user']
-
-# ... Register other profile models ...
-admin.site.register(InteriorProfile)
-admin.site.register(ConstructionProfile)
-admin.site.register(MaintenanceProfile)
-admin.site.register(SmartHomeProfile)
+# Register concrete profiles using the base ServiceProviderProfileAdmin
 
 
 class EmployeeRelationshipInline(admin.TabularInline):
@@ -139,30 +120,69 @@ class CompanyProfileAdmin(admin.ModelAdmin):
 
 @admin.register(EmployeeRelationship)
 class EmployeeRelationshipAdmin(admin.ModelAdmin):
-    list_display = ('company', 'employee', 'job_title', 'start_date')
-    list_filter = ('company',)
+    list_display = ('company', 'get_employee_username', 'job_title', 'start_date')
+    list_filter = ('company__company_name',)
     search_fields = ('company__company_name', 'employee__username', 'job_title')
     autocomplete_fields = ['company', 'employee']
+    
+    def get_employee_username(self, obj):
+        return obj.employee.username
+    get_employee_username.short_description = 'Employee'
+    get_employee_username.admin_order_field = 'employee__username'
 
 @admin.register(UserOTP)
 class UserOTPAdmin(admin.ModelAdmin):
-    list_display = ('user', 'phone', 'email', 'otp', 'otp_type', 'count')
+    list_display = ('user', 'phone', 'email', 'otp_type_display', 'count_display')
     list_filter = ('otp_type',)
     search_fields = ('user__username', 'phone', 'email')
+    
+    def otp_type_display(self, obj):
+        return obj.get_otp_type_display()
+    otp_type_display.short_description = 'OTP Type'
+    
+    def count_display(self, obj):
+        return obj.count
+    count_display.short_description = 'OTP Sent Count'
 
+
+@admin.register(ServiceType)
+class ServiceTypeAdmin(admin.ModelAdmin):
+    list_display = ('name', 'category', 'category_display', 'default_order', 'is_standard_phase_service')
+    list_filter = ('category', 'is_standard_phase_service')
+    search_fields = ('name', 'description')
+    list_editable = ('default_order', 'is_standard_phase_service', 'category')
+    ordering = ('default_order', 'name')
+    fieldsets = (
+        (None, {'fields': ('name', 'description', 'category')}),
+        ('Standard Phase Configuration', {
+            'fields': ('is_standard_phase_service', 'default_order', 
+                        'default_phase_title_template', 'default_phase_description_template'),
+            'description': "Configure if this service type is part of the default project phase setup and its order/templates."
+        }),
+    )
+    def category_display(self, obj):
+        return obj.get_category_display()
+    category_display.short_description = 'Category'
+    
 # --- Subscription Admin ---
 @admin.register(SubscriptionPlan)
 class SubscriptionPlanAdmin(admin.ModelAdmin):
-    list_display = ('name', 'user_type', 'price', 'is_active')
-    list_filter = ('user_type', 'is_active')
+    list_display = ('name', 'get_user_type_display_custom', 'price', 'is_active', 'is_default_free_plan')
+    list_filter = ('user_type', 'is_active', 'is_default_free_plan')
     search_fields = ('name',)
+    list_editable = ('is_default_free_plan',)
+
+    def get_user_type_display_custom(self, obj): # Custom method because original might not exist directly on model
+        return dict(obj._meta.get_field('user_type').choices).get(obj.user_type)
+    get_user_type_display_custom.short_description = 'Plan For'
 
 @admin.register(UserSubscription)
 class UserSubscriptionAdmin(admin.ModelAdmin):
     list_display = ('user', 'plan', 'start_date', 'end_date', 'is_active')
-    list_filter = ('is_active', 'plan')
+    list_filter = ('is_active', 'plan__name')
     search_fields = ('user__username', 'plan__name')
     autocomplete_fields = ['user', 'plan']
+    date_hierarchy = 'start_date'
 
 # --- Referral & PromoCode Admin ---
 @admin.register(Referral)
@@ -177,6 +197,7 @@ class SubPromoCodeAdmin(admin.ModelAdmin):
     list_display = ('code', 'discount_percentage', 'max_uses', 'uses', 'is_active', 'start_date', 'end_date')
     list_filter = ('is_active',)
     search_fields = ('code',)
+    readonly_fields = ('uses',)
 
 
 # --- Project Workflow Admin ---
@@ -233,12 +254,13 @@ class ProjectsAdmin(admin.ModelAdmin):
 
 @admin.register(Phase)
 class PhaseAdmin(admin.ModelAdmin):
-    list_display = ('title', 'project_link', 'service_provider', 'order', 'status', 'start_date', 'expected_end_date')
-    list_filter = ('status', 'project__customer__user__user_type', 'service_provider__user_type')
+    list_display = ('title', 'project_link', 'required_service_type', 'service_provider', 'order', 'status', 'start_date')
+    list_filter = ('status', 'required_service_type', 'project__customer__user__user_type', 'service_provider__user_type')
     search_fields = ('title', 'project__title', 'service_provider__username', 'description')
     ordering = ('project', 'order')
-    autocomplete_fields = ['project', 'service_provider']
+    autocomplete_fields = ['project', 'service_provider', 'required_service_type'] # Add required_service_type
     readonly_fields = ('actual_end_date',)
+    filter_horizontal = ('customer_attachements',) # If you want a nicer M2M widget
 
     def project_link(self, obj):
         from django.urls import reverse
@@ -314,12 +336,6 @@ class DocumentAdmin(admin.ModelAdmin):
         return obj.title or obj.file.name.split('/')[-1]
     title_display.short_description = 'Title/Filename'
     
-@admin.register(ServiceType)
-class ServiceTypeAdmin(admin.ModelAdmin):
-    list_display = ('name', 'category', 'default_order', 'is_standard_phase_service')
-    list_filter = ('category', 'is_standard_phase_service')
-    search_fields = ('name', 'description')
-    list_editable = ('default_order', 'is_standard_phase_service') # Allow easy editing from list view
 
 # Register other models if they exist and you want to manage them
 admin.site.register(Lead)
@@ -328,3 +344,5 @@ admin.site.register(Review)
 admin.site.register(FeaturedListing)
 admin.site.register(EngagementLog)
 admin.site.register(Transaction)
+
+    

@@ -3,11 +3,12 @@ from django.dispatch import receiver
 from django.core.mail import send_mail
 from django.conf import settings
 import uuid
+from datetime import timezone
 from .constants import (STATUS_ACCEPTED,STATUS_CANCELLED,STATUS_COMPLETED,STATUS_IN_PROGRESS,STATUS_PENDING,STATUS_REJECTED, SERVICE_PROVIDER_USER_TYPES_REQUIRING_APPROVAL)
 
 from .models.user import User, CustomerProfile, ConsultantProfile, ConstructionProfile, InteriorProfile, MaintenanceProfile, SmartHomeProfile, UserSubscription
 from .models.project import Phase, Quotation,Drawing,Revision,Document,Projects
-from .models import Referral
+from .models import Referral, SubscriptionPlan
 
 @receiver(post_save, sender=Quotation)
 def notify_customer_on_quotation(sender, instance, created, **kwargs): # Renamed for clarity
@@ -119,13 +120,23 @@ def handle_new_user_created(sender, instance, created, **kwargs):
 
         # 1. Create Referral Code
         try:
-            referral, ref_created = Referral.objects.get_or_create(
-                referrer=instance,
-                defaults={'code': f"REF-{str(uuid.uuid4()).upper().replace('-', '')[:10]}"}
-            )
-            #print(f"[Signal] Referral for {instance.username} {'created' if ref_created else 'retrieved'}: {referral.code}")
+            free_plan = SubscriptionPlan.objects.get(is_defailt_free_plan=True)
+            if free_plan:
+                UserSubscription.objects.create(
+                    user=instance,
+                    plan=free_plan,
+                    is_active=True,
+                    start_date=timezone.now()
+                )
+                print(f"[Signal] Free plan subscription created for {instance.username}")
+            else:
+                print(f"[Signal Warning] Default 'Free Tier' plan not found. User {instance.username} has no initial subscription.")
+        except SubscriptionPlan.DoesNotExist:
+            print(f"[Signal Error] Default 'Free Tier' SubscriptionPlan does not exist in the database.")
+        except SubscriptionPlan.MultipleObjectsReturned:
+            print(f"[Signal Error] Multiple 'Free Tier' SubscriptionPlans found. Please ensure only one default free plan exists.")
         except Exception as e:
-            print(f"[Signal Error] Creating referral for {instance.username}: {e}")
+            print(f"[Signal Error] Assigning default subscription to {instance.username}: {e}")
 
         # 2. Send Welcome Email
         try:
