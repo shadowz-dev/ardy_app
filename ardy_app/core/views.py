@@ -9,6 +9,8 @@ from decimal import Decimal
 from django.utils import timezone
 from django.db.models import Q
 from .constants import *
+from django.conf import settings
+from django.core.mail import send_mail
 
 from knox.models import AuthToken
 from knox.views import LoginView as KnoxLoginView
@@ -27,11 +29,11 @@ from .serializers import (
     ConstructionProfileSerializer, MaintenanceProfileSerializer, SmartHomeProfileSerializer,
     SubscriptionPlanSerializer, UserSubscriptionSerializer, ReferralSerializer,
     ProjectsSerializer, PhaseSerializer, QuotationSerializer, DrawingSerializer,
-    RevisionSerializer, DocumentSerializer, SubPromoCodeSerializer
+    RevisionSerializer, DocumentSerializer, SubPromoCodeSerializer, BasicServiceProviderInfoSerializer
 )
 from .permission import ( # Assuming these are defined
     IsCustomer, IsConsultant, IsInterior, IsConstruction,
-    IsMaintenance, IsSmartHome, IsServiceProvider
+    IsMaintenance, IsSmartHome, IsServiceProvider, IsObjectUploader, IsPhaseAssignedServiceProvider, IsPremiumUser, IsProjectOwner
 )
 from .utils import apply_sub_promo_code # Assuming this utility exists
 
@@ -242,52 +244,187 @@ class PhaseViewSet(viewsets.ModelViewSet):
     permission_classes = [permissions.IsAuthenticated] # Add more specific permissions
 
     def get_queryset(self):
-        user = self.request.user
-        project_id = self.request.query_params.get('project_id') or self.kwargs.get('project_pk')
-        
-        queryset = Phase.objects.all()
-        if project_id:
-            queryset = queryset.filter(project_id=project_id)
+        user = self.request.user        
+        queryset = Phase.objects.select_related('project__customer__user', 'service_provider', 'required_service_type').all()
+        project_pk = self.kwargs.get('project_pk') # If using nested routes like /projects/{project_pk}/phases/
+        project_id_param = self.request.query_params.get('project_id')
+        target_project_id = project_pk or project_id_param # Use project_pk if available, otherwise project_id_param
+        if target_project_id:
+            queryset = queryset.filter(project_id=target_project_id)
             try:
-                project = Projects.objects.get(id=project_id)
-                if not (project.customer.user == user or
-                        (project.primary_service_provider == user) or
-                        project.phases.filter(service_provider=user).exists() or
-                        user.is_staff):
+                project = Projects.objects.select_related('customer__user').get(id=target_project_id)
+                is_project_owner = (project.customer.user == user)
+                is_sp_on_project = project.phases.filter(service_provider=user).exist()
+                if not (is_project_owner or is_sp_on_project or user.is_staff):
                     return Phase.objects.none() # Not related to this project
             except Projects.DoesNotExist:
                 return Phase.objects.none()
         else: # If not filtering by project, apply general user-based filtering
             if user.user_type == 'Customer':
                 queryset = queryset.filter(project__customer__user=user)
-            elif user.user_type in ['Consultant', 'Construction', 'Interior Designer', 'Maintenance', 'Smart Home']:
+            elif user.user_type in [st[0] for st in SERVICE_PROVIDER_USER_TYPES_REQUIRING_APPROVAL]:
                 queryset = queryset.filter(service_provider=user)
             elif not user.is_staff: # Non-admin, non-customer, non-SP shouldn't see any by default
                 return Phase.objects.none()
-        return queryset
+        return queryset.distinct()
 
+    def _get_user_specific_profile(self, user_instance):
+        if not user_instance or user_instance.user_type not in [st[0] for st in SERVICE_PROVIDER_USER_TYPES_REQUIRING_APPROVAL]:
+            return None
+        profile_accessor_map = {
+            'Consultant': 'consultantprofile',
+            'Interior Designer': 'interiorprofile',
+            'Construction': 'constructionprofile',
+            'Maintenance': 'maintenanceprofile',
+            'Smart_Home': 'smarthomeprofile'
+        }
+        accessor_name = profile_accessor_map.get(user_instance.user_type)
+        if accessor_name and hasattr(user_instance, accessor_name):
+            return getattr(user_instance, accessor_name)
+        return None
+    
+    def get_permissions(self):
+            """
+            Set permissions based on the action.
+            """
+            if self.action == 'list':
+                # Anyone authenticated can list, get_queryset handles filtering
+                return [permissions.IsAuthenticated()]
+            elif self.action == 'create':
+                # For create, check if user is project owner is done in perform_create.
+                # Here, just ensure they are authenticated. The project ownership check is implicit
+                # as they must pass a project_id they own.
+                return [permissions.IsAuthenticated()]
+            elif self.action in ['retrieve', 'update', 'partial_update', 'destroy', 'complete_phase_action', 'suggest_providers']:
+                # For these actions, IsProjectOwner OR IsPhaseAssignedServiceProvider (or admin) should have access.
+                # IsProjectOwner and IsPhaseAssignedServiceProvider implement has_object_permission.
+                # Note: (IsProjectOwner | IsPhaseAssignedServiceProvider)() creates an OR condition.
+                return [permissions.IsAuthenticated(), (IsProjectOwner | IsPhaseAssignedServiceProvider)()]
+            return [permissions.IsAdminUser()] # Default to admin for any other unforseen actions
+        
     def perform_create(self, serializer):
-        project_id = serializer.validated_data.get('project').id # Assuming project is passed as ID
-        try:
-            project = Projects.objects.get(id=project_id)
-            # Check if request.user is customer of this project or admin
-            if not (project.customer.user == self.request.user or self.request.user.is_staff):
-                raise PermissionDenied("You cannot add phases to this project.")
-            serializer.save() # Project is already in validated_data
-        except Projects.DoesNotExist:
-            raise ValidationError("Project not found.")
+        project_instance = serializer.validated_data.get('project')
+        if not project_instance:
+            raise ValidationError({{"Project": "Project is required to create a phase."}})
+        if not (project_instance.customer.user == self.request.user or self.request.user.is_staff):
+            raise PermissionDenied("You are only authorized to add phase to your own project")
+        serializer.save()
 
-    @action(detail=True, methods=['post'], permission_classes=[permissions.IsAuthenticated]) # Perms: SP of phase or Customer of project
+    @action(detail=True, methods=['post']) # Perms: SP of phase or Customer of project
     def complete_phase_action(self, request, pk=None): # Renamed to avoid clash
         phase = self.get_object()
-        if not (phase.service_provider == request.user or phase.project.customer.user == request.user or request.user.is_staff):
-            raise PermissionDenied("You are not authorized to complete this phase.")
         try:
-            project = phase.project # Get the project instance from the phase
-            project.complete_phase(phase_to_complete=phase) # Call the method on project instance
+            phase.project.complete_phase(phase_to_complete=phase)
             return Response(PhaseSerializer(phase, context={'request': request}).data, status=status.HTTP_200_OK)
         except ValueError as e:
             return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            return Response({"error": "An unexpected error occurred completing the phase."}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    
+    @action(detail=True, methods=['get']) # Perms: SP of phase or Customer of project
+    def suggest_providers(self, request, pk=None):
+        phase = self.get_object()
+        if not phase.required_service_type:
+            return Response({"error": "This phase has no required service type."}, status=status.HTTP_400_BAD_REQUEST)
+        suggested_users = phase.get_suggested_providers()
+        if not suggested_users.exists():
+            return Response({"error": "No suggested service providers found for the required service type of this phase."}, status=status.HTTP_200_OK)
+        serializer = BasicServiceProviderInfoSerializer(suggested_users, many=True, context={'request': request})
+        return Response(serializer.data, status=status.HTTP_200_OK)
+    
+    @action(detail=True, methods=['post'], permission_classes=[IsProjectOwner]) # Only project owner can assign
+    def assign_service_provider(self, request, pk=None):
+        phase = self.get_object() # Ensures project owner
+        service_provider_id = request.data.get('service_provider_id')
+
+        if not service_provider_id:
+            return Response({"error": "service_provider_id is required."}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            provider_to_assign = User.objects.get(
+                id=service_provider_id,
+                user_type__in=[st[0] for st in SERVICE_PROVIDER_USER_TYPES_REQUIRING_APPROVAL], # Ensure it's an SP
+                is_active = True
+            )
+        except User.DoesNotExist:
+            return Response({"error": "Service provider not found or is not a valid provider type, or is not active"}, status=status.HTTP_404_NOT_FOUND)
+        # --- Idempotency Check ---
+        if phase.service_provider == provider_to_assign:
+            # The requested provider is already assigned to this phase.
+            # Return current state, no changes needed, no new notifications.
+            #print(f"[View Action] Provider {provider_to_assign.username} already assigned to phase {phase.id}. No action taken.")
+            return Response(
+                {"message": f"Service provider '{provider_to_assign.username}' is already assigned to this phase.",
+                "data": PhaseSerializer(phase, context={'request': request}).data}, 
+                status=status.HTTP_200_OK
+            )
+        # --- End Idempotency Check ---
+            # --- Check if this provider actually offers the phase.required_service_type ---
+            if phase.required_service_type:
+                provider_specific_profile = self._get_user_specific_profile(provider_to_assign)
+                if not provider_specific_profile:
+                    return Response({"error": f"Could not retrieve specific profile for provider {provider_to_assign.username} to verify services."}, status=status.HTTP_400_BAD_REQUEST)
+
+                # 'services_offered' is on BaseProfile, inherited by specific profiles
+                if not provider_specific_profile.services_offered.filter(id=phase.required_service_type.id).exists():
+                    return Response({
+                        "error": (f"Provider '{provider_to_assign.username}' does not offer the required service "
+                                f"'{phase.required_service_type.name}' for this phase.")
+                    }, status=status.HTTP_400_BAD_REQUEST)
+            # --- End Service Offering Check ---
+            old_ps = phase.service_provider
+            phase.service_provider = provider_to_assign
+            phase.save(update_fields=['service_provider'])
+            customer_user = phase.project.customer.user
+            # 1. Notify the NEWLY assigned Service Provider
+        try:
+            sp_subject = f"You've been assigned to project phase: {phase.title}"
+            sp_message_body = (
+                f"Dear {provider_to_assign.first_name or provider_to_assign.username},\n\n"
+                f"You have been assigned as the service provider for the phase '{phase.title}' "
+                f"on project '{phase.project.title}' (ID: {phase.project.id}) by customer '{customer_user.username}'.\n\n"
+                f"Required Service: {phase.required_service_type.name if phase.required_service_type else 'N/A'}\n"
+                f"Phase Description: {phase.description or 'N/A'}\n\n"
+                f"Please log in to Ardy-App to view details."
+            )
+            send_mail(sp_subject, sp_message_body, settings.DEFAULT_FROM_EMAIL, [provider_to_assign.email], fail_silently=False)
+            print(f"[View Action] SP Assignment Email sent to {provider_to_assign.email} for phase {phase.id}")
+        except Exception as e:
+            print(f"Error sending assignment notification to SP {provider_to_assign.email} for phase {phase.id}: {e}")
+            # Log this error but don't fail the whole request because of email
+
+        # 2. Notify the Customer (Project Owner)
+        try:
+            customer_subject = f"Service Provider Assigned for Phase: {phase.title}"
+            customer_message_body = (
+                f"Dear {customer_user.first_name or customer_user.username},\n\n"
+                f"Service provider '{provider_to_assign.username}' has been successfully assigned "
+                f"to the phase '{phase.title}' for your project '{phase.project.title}'.\n\n"
+                f"You can track progress in the Ardy-App."
+            )
+            send_mail(customer_subject, customer_message_body, settings.DEFAULT_FROM_EMAIL, [customer_user.email], fail_silently=False)
+            print(f"[View Action] Customer Confirmation Email sent to {customer_user.email} for phase {phase.id} SP assignment")
+        except Exception as e:
+            print(f"Error sending assignment confirmation to customer {customer_user.email} for phase {phase.id}: {e}")
+
+        # 3. Optional: Notify the OLD Service Provider if they were replaced
+        if old_sp and old_sp != provider_to_assign:
+            try:
+                old_sp_subject = f"Update on your assignment for phase: {phase.title}"
+                old_sp_message_body = (
+                    f"Dear {old_sp.first_name or old_sp.username},\n\n"
+                    f"This is to inform you that your assignment for the phase '{phase.title}' "
+                    f"on project '{phase.project.title}' (ID: {phase.project.id}) has been updated. "
+                    f"Another service provider. has now been assigned.\n\n"
+                    f"Please check Ardy-App or contact the project owner for more details if needed."
+                )
+                send_mail(old_sp_subject, old_sp_message_body, settings.DEFAULT_FROM_EMAIL, [old_sp.email], fail_silently=False)
+                print(f"[View Action] Old SP Notification Email sent to {old_sp.email} for phase {phase.id}")
+            except Exception as e:
+                print(f"Error sending notification to old SP {old_sp.email} for phase {phase.id}: {e}")
+        # --- End Notification Logic ---
+
+        return Response(PhaseSerializer(phase, context={'request': request}).data, status=status.HTTP_200_OK)
 
 
 # --- Quotation Views ---

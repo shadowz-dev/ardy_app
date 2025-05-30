@@ -219,3 +219,67 @@ class ReferralSerializer(serializers.ModelSerializer):
         model = Referral
         fields = ['id', 'referrer', 'referred_user', 'code', 'reward', 'is_redeemed']
 
+class BasicServiceProviderInfoSerializer(serializers.ModelSerializer):
+    """
+    Serializes basic information for a User who is a Service Provider,
+    including key details from their specific profile.
+    """
+    # Fields from the User model
+    username = serializers.CharField(read_only=True)
+    # email = serializers.EmailField(read_only=True) # Maybe not for public suggestion list
+    user_type_display = serializers.CharField(source='get_user_type_display', read_only=True)
+
+    # Fields from the specific profile (will be populated based on user_type)
+    company_name = serializers.SerializerMethodField()
+    expertise = serializers.SerializerMethodField()
+    experience = serializers.SerializerMethodField()
+    # projects_completed = serializers.SerializerMethodField() # If you want to show this
+    # services_offered = ServiceTypeSerializer(many=True, read_only=True) # Maybe too much for a basic list
+
+    class Meta:
+        model = User
+        fields = [
+            'id', 'username', 'first_name', 'last_name', # Basic User fields
+            'user_type_display', # Human-readable user type
+            'company_name', 'expertise', 'experience',
+            # 'projects_completed',
+            # 'services_offered' # Consider if this should be here or fetched on demand
+        ]
+
+    def get_profile_attr(self, obj, attr_name, default='N/A'):
+        """ Helper to get an attribute from the user's specific profile. """
+        profile = None
+        if obj.user_type == 'Consultant' and hasattr(obj, 'consultantprofile'):
+            profile = obj.consultantprofile
+        elif obj.user_type == 'Interior Designer' and hasattr(obj, 'interiorprofile'):
+            profile = obj.interiorprofile
+        elif obj.user_type == 'Construction' and hasattr(obj, 'constructionprofile'):
+            profile = obj.constructionprofile
+        elif obj.user_type == 'Maintenance' and hasattr(obj, 'maintenanceprofile'): # Check spelling
+            profile = obj.maintenanceprofile
+        elif obj.user_type == 'Smart_Home' and hasattr(obj, 'smarthomeprofile'): # Check user_type string
+            profile = obj.smarthomeprofile
+        
+        if profile:
+            return getattr(profile, attr_name, default)
+        return default
+
+    def get_company_name(self, obj):
+        return self.get_profile_attr(obj, 'company_name', default=obj.username) # Fallback to username
+
+    def get_expertise(self, obj):
+        return self.get_profile_attr(obj, 'expertise')
+
+    def get_experience(self, obj):
+        return self.get_profile_attr(obj, 'experience', default=None) # Return None if not applicable or not found
+
+    # If you want to show services offered here (can make response larger):
+    # def to_representation(self, instance):
+    #     representation = super().to_representation(instance)
+    #     profile = None
+    #     # ... (logic to get the correct profile as in get_profile_attr) ...
+    #     if profile and hasattr(profile, 'services_offered'):
+    #         representation['services_offered'] = ServiceTypeSerializer(profile.services_offered.all(), many=True).data
+    #     else:
+    #         representation['services_offered'] = []
+    #     return representation

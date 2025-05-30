@@ -4,7 +4,7 @@ from django.core.mail import send_mail
 from django.conf import settings
 import uuid
 from datetime import timezone
-from .constants import (STATUS_ACCEPTED,STATUS_CANCELLED,STATUS_COMPLETED,STATUS_IN_PROGRESS,STATUS_PENDING,STATUS_REJECTED, SERVICE_PROVIDER_USER_TYPES_REQUIRING_APPROVAL)
+from .constants import *
 
 from .models.user import User, CustomerProfile, ConsultantProfile, ConstructionProfile, InteriorProfile, MaintenanceProfile, SmartHomeProfile, UserSubscription
 from .models.project import Phase, Quotation,Drawing,Revision,Document,Projects
@@ -211,3 +211,4 @@ def handle_new_user_created(sender, instance, created, **kwargs):
 # - create_referral_code (its logic is now in handle_new_user_created)
 # - user_post_save_actions (this was incomplete/redundant)
 # - create_user_profile_and_send_welcome (its logic is now in handle_new_user_created)
+
