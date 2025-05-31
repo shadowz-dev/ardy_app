@@ -11,6 +11,7 @@ from django.db.models import Q
 from .constants import *
 from django.conf import settings
 from django.core.mail import send_mail
+from django.db.models.functions import Random
 
 from knox.models import AuthToken
 from knox.views import LoginView as KnoxLoginView
@@ -326,7 +327,12 @@ class PhaseViewSet(viewsets.ModelViewSet):
         phase = self.get_object()
         if not phase.required_service_type:
             return Response({"error": "This phase has no required service type."}, status=status.HTTP_400_BAD_REQUEST)
-        suggested_users = phase.get_suggested_providers()
+        suggested_users = phase.get_suggested_providers().annotate(
+            plan_priority=models.Subquery(
+                UserSubscription.objects.filter(user=models.OuterRef('pk'),
+                is_active=True).order_by('plan__display__priority').values('plan__display_priority')[:1]
+            )
+        ).order_by(models.F('plan_priority').asc(nulls_last=True)), Random()
         if not suggested_users.exists():
             return Response({"error": "No suggested service providers found for the required service type of this phase."}, status=status.HTTP_200_OK)
         serializer = BasicServiceProviderInfoSerializer(suggested_users, many=True, context={'request': request})
@@ -344,7 +350,8 @@ class PhaseViewSet(viewsets.ModelViewSet):
             provider_to_assign = User.objects.get(
                 id=service_provider_id,
                 user_type__in=[st[0] for st in SERVICE_PROVIDER_USER_TYPES_REQUIRING_APPROVAL], # Ensure it's an SP
-                is_active = True
+                is_active = True,
+                is_approved_provider = True
             )
         except User.DoesNotExist:
             return Response({"error": "Service provider not found or is not a valid provider type, or is not active"}, status=status.HTTP_404_NOT_FOUND)

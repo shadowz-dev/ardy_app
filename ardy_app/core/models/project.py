@@ -428,7 +428,8 @@ class Phase(models.Model):
             Q(smarthomeprofile__services_offered=self.required_service_type)
         ).filter(
             is_active=True, # Only suggest active providers
-            user_type__in=[st[0] for st in SERVICE_PROVIDER_USER_TYPES_REQUIRING_APPROVAL] # Ensure they are SPs
+            user_type__in=[st[0] for st in SERVICE_PROVIDER_USER_TYPES_REQUIRING_APPROVAL], # Ensure they are SPs
+            is_approved_provider=True
         ).distinct()
         
     def save(self, *args, **kwargs):
@@ -582,3 +583,13 @@ class Document(models.Model):
     
 
 #----------------------------------------------------End Projects Model-----------------------------------------------
+
+class PhaseUpdate(models.Model):
+    phase = models.ForeignKey(Phase, on_delete=models.CASCADE, related_name="updates")
+    author = models.ForeignKey(User, on_delete=models.SET_NULL, null=True)
+    timestamp = models.DateTimeField(auto_now_add=True)
+    text = models.TextField()
+    update_attachments = models.ManyToManyField(Document, related_name="attached_to_updates", blank=True)
+    
+    class Meta:
+        ordering = ['-timestamp']

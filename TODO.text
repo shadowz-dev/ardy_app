@@ -1,0 +1,85 @@
+-Service Provider Signup & Admin Approval:
+Current State: User.is_active can be used by admins. Signals notify admins for new SPs.
+Refinement:
+Add an explicit is_approved_provider = models.BooleanField(default=False) to User or BaseProfile. This separates general account activation from platform approval as a service provider.
+Admin interface should clearly show pending SP approvals.
+
+-SP Sub-Users (Employees):
+Current State: CompanyProfile and EmployeeRelationship exist. This is a good foundation.
+To Implement:
+API for company owner to invite/add/manage employees.
+Logic to define what employees can do (e.g., chat on behalf of company, manage specific projects/phases assigned to the company). This might involve adding a role field to EmployeeRelationship.
+
+-Quotation Rejection with Reason:
+Current State: Quotation.reject() method exists.
+Model Change Needed:
+Add rejection_reason = models.TextField(blank=True, null=True) to the Quotation model.
+View/Serializer Change:
+The API endpoint where a customer rejects a quotation should accept a reason in the payload.
+The Quotation.reject() method should save this reason.
+The notification to the SP should include this reason.
+
+-Approved Quotation Turns into a Project (Phase Start):
+Current State: Quotation.approve() method. Phase.service_provider assignment. Project.start_project() or Project.advance_to_phase().
+Refinement:
+When a quotation for a Phase is approved by the customer:
+The Phase.service_provider should be set to the quotation.service_provider.
+The Phase.status should transition (e.g., to "Awaiting Start" or directly to "In Progress" if payment is also confirmed).
+The Project.active_phase should be set to this phase if it's the first one or the next in sequence.
+This logic can be orchestrated in the QuotationViewSet's approve action after calling quotation.approve().
+
+-Ardy-App as Intermediate for Handovers:
+Logic: This is more about process flow and status updates.
+When SP marks phase/project complete, status changes (e.g., "Pending Customer Handover Acceptance").
+Customer reviews deliverables and accepts. Status changes (e.g., "Handover Accepted", then "Completed").
+Ardy-App releases payment to SP after customer acceptance.
+
+-Chat Module (Customer <> Assigned SP & Staff):
+Current State: You have ChatRoom and Message models planned with Django Channels.
+Refinement:
+ChatRoom should link to Project or Phase to contextualize the chat.
+Participants in a ChatRoom: Project.customer.user and Phase.service_provider (and their designated EmployeeRelationship sub-users if the SP is a company).
+Dynamically create/manage chat rooms when an SP is assigned to a phase where chat is needed.
+
+-Content Monitoring in Chat (Phone/Email Sharing):
+Logic in Channels Consumer: Your ChatConsumer.receive() method will need to parse messages.
+Use regex to detect patterns resembling phone numbers or email addresses.
+If detected:
+Option 1: Block the message and notify the sender.
+Option 2: Allow the message but flag it and send a notification to Ardy-App admins.
+Store a record of the flagged message.
+This is a non-trivial feature requiring careful regex and policy decisions.
+
+-Project Follow-up Module (Progress for each Phase):
+Frontend Driven: This is largely a frontend concern, displaying data from Project and Phase models (status, start/end dates, linked documents, phase updates).
+Backend Support: Ensure your API endpoints for Projects and Phases provide all necessary information (including nested PhaseUpdates, Documents, Drawings) for the frontend to build this view.
+
+-Service Provider Portfolio/Showcase:
+While BaseProfile has a portfolio URL, consider a more structured way for SPs to showcase completed projects (perhaps those done outside Ardy-App initially, or a flag on Ardy-App projects can_be_showcased=True). This helps customers choose.
+
+-Review and Rating System (You have Review model):
+Ensure customers can easily leave reviews for SPs after a phase or project is completed with them.
+Display average ratings on SP listings.
+Consider review moderation.
+
+-Dispute Resolution Mechanism:
+What happens if a customer is unhappy with deliverables or an SP claims work is done but it's not?
+This might involve a Dispute model linked to a Project/Phase, with states (Open, UnderReviewByArdy, Resolved) and communication threads. Ardy-App admins would mediate.
+
+-Contracts/Agreements:
+When a quotation is approved, is there a formal agreement? Could Documents be used to store templated or uploaded contract PDFs?
+Digital signatures are complex but could be a future consideration.
+
+-Notifications (Beyond email):
+In-App Notifications: Create a Notification model and API for users to see alerts within the app (new quote, new message, phase update, etc.).
+Push Notifications (Mobile): If your React Expo app is a native mobile app, leverage Expo's push notification capabilities for important alerts.
+
+-Detailed User Roles for SP Employees:
+Your EmployeeRelationship has job_title. You could expand this to a role field (e.g., ForeignKey to a CompanyRole model) with specific permissions within the Ardy-App platform (e.g., "Project Manager for Company," "Draftsman," "Client Communicator").
+
+-Search and Filtering for SPs:
+Beyond just required_service_type, customers might want to filter SPs by location (if SPs have a service area), budget range compatibility (if SPs indicate typical project sizes), years of experience, ratings.
+
+-Onboarding for Service Providers:
+A clear checklist for SPs: complete profile, upload portfolio/documents, select services offered, set up company if applicable.
+

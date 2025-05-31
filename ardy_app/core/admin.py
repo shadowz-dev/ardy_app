@@ -1,6 +1,9 @@
-from django.contrib import admin
+from django.contrib import admin, messages
 from django.apps import apps
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
+from .constants import *
+from django.core.mail import send_mail
+from django.conf import settings
 
 from .models import (
     User, CustomerProfile, ConsultantProfile, InteriorProfile, ConstructionProfile,
@@ -62,7 +65,7 @@ class CompanyProfileInline(admin.StackedInline):
 @admin.register(User)
 class UserAdmin(BaseUserAdmin):
     fieldsets = BaseUserAdmin.fieldsets + (
-        ('User Type & Phone', {'fields': ('user_type', 'phone')}),
+        ('Custom Info', {'fields': ('user_type', 'phone','is_approved_provider')}),
         ('Marketing Preferences', {'fields': ('news_letter', 'offers_and_discounts')}),
         # ('Referral Info', {'fields': ('referred_by_user_link',)}) # If you add a display field
     )
@@ -70,7 +73,7 @@ class UserAdmin(BaseUserAdmin):
         (None, {'fields': ('user_type', 'phone', 'email')}),
     )
     list_display = ('username', 'email', 'first_name', 'last_name', 'is_staff', 'user_type', 'date_joined')
-    list_filter = BaseUserAdmin.list_filter + ('user_type',)
+    list_filter = BaseUserAdmin.list_filter + ('user_type','is_approved_provider')
     search_fields = ('username', 'first_name', 'last_name', 'email', 'phone')
     ordering = ('username',)
     
@@ -82,7 +85,52 @@ class UserAdmin(BaseUserAdmin):
         ConstructionProfileInline, MaintenanceProfileInline, SmartHomeProfileInline,
         CompanyProfileInline # If a user can be a company owner
     ]
+    
+    actions = ['approve_selected_providers', 'disapprove_selected_providers']
+    
+    def get_queryset(self, request):
+        qs = super().get_queryset(request)
+        return qs
+    
+    def approve_selected_providers(self, request, queryset):
+        providers_to_approve = queryset.filter(user_type__in=[st[0] for st in SERVICE_PROVIDER_USER_TYPES_REQUIRING_APPROVAL])
+        
+        count = 0
+        for provider in providers_to_approve:
+            if not provider.is_approved_provider:
+                provider.is_approved_provider = True
+                provider.save(update_fields=["is_approved_provider"])
+                send_mail(
+                    subject="Your Ardy-App account has been approved!",
+                    message=f"Dear {provider.first_name or provider.username},\n\nYour account on Ardy-App has been approved. You can now fully access platform features for providers.",
+                    from_email=settings.DEFAULT_FROM_EMAIL,
+                    recipient_list=[provider.email]
+                )
+                count += 1
+        if count > 0:
+            self.message_user(request,f"{count} service provider(s) have been approved.", messages.SUCCESS)
+        else:
+            self.message_user(request,"No service providers were newly approved (either not Service provider type or already approved).", messages.WARNING)
+    approve_selected_providers.short_description = "Approve Selected Providers"
+            
+            
+    def disapprove_selected_providers(self, request, queryset):
+        providers_to_disapprove = queryset.filter(user_type__in=[st[0] for st in SERVICE_PROVIDER_USER_TYPES_REQUIRING_APPROVAL])
+        
+        count = 0
+        for provider in providers_to_disapprove:
+            if provider.is_approved_provider:
+                provider.is_approved_provider = False
+                provider.save(update_fields=['is_approved_provider'])
+                # TODO: Send notification email about disapproval/suspension
+                count += 1
 
+        if count > 0:
+            self.message_user(request, f"{count} service provider(s) successfully disapproved.", messages.SUCCESS)
+        else:
+            self.message_user(request, "No service providers were newly disapproved.", messages.WARNING)
+    disapprove_selected_providers.short_description = "Disapprove selected Service Providers"
+    
     # If you want to easily see who referred this user:
     # readonly_fields = ('referred_by_user_link',)
     # def referred_by_user_link(self, obj):

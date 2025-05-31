@@ -48,3 +48,11 @@ UserOTP=[
 SERVICE_PROVIDER_USER_TYPES_REQUIRING_APPROVAL = [
     'Consultant', 'Interior Designer', 'Construction', 'Maintenance', 'Smart_Home' # Match values from USER_TYPES
 ]
+
+PAYMENT_CLAIM_STATUS_CHOICES = [
+    ('PendingReview','Pending Review'),
+    ('ApprovedByCustomer', 'Approved By Customer'), 
+    ('ApprovedByArdy', 'Approved By Ardy'), 
+    ('Paid', 'Paid'), 
+    ('Rejected', 'Rejected')
+]

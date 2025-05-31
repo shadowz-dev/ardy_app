@@ -133,6 +133,19 @@ class Transaction(models.Model):
     phase = models.CharField(max_length=100)
     status = models.CharField(max_length=50, choices=[('Pending', 'Pending'), ('Completed', 'Completed')])
     created_at = models.DateTimeField(auto_now_add=True)
+    
+    
+class PaymentClaim(models.Model):
+    phase = models.ForeignKey(Phase, on_delete=models.CASCADE, related_name='payment_claims')
+    service_provider = models.ForeignKey(User, on_delete=models.CASCADE)
+    amount_claimed = models.DecimalField(max_digits=10, decimal_places=2)
+    description = models.TextField(help_text="Description of work completed for this claim")
+    status = models.CharField(max_length=50, choices=PAYMENT_CLAIM_STATUS_CHOICES, default='PendingReview')
+    requested_at = models.DateTimeField(auto_now_add=True)
+    approved_by_customer_at = models.DateTimeField(null=True, blank=True)
+    processed_by_ardy_at = models.DateTimeField(null=True, blank=True)
+    transaction_ref = models.OneToOneField(Transaction, on_delete=models.SET_NULL, null=True, blank=True)
+    supporting_documents = models.ManyToManyField(Document,blank=True)
 
 #----------------------------------------------------End Transactions Model-----------------------------------------------
 

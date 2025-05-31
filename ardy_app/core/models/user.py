@@ -16,6 +16,7 @@ class User(AbstractUser):
     phone_regex = RegexValidator(regex=r'^\+?1?\d{9,14}$', message="Phone number must be entered in the format : '+99999999999'. Up to 14 digits allowed.",)
     phone = models.CharField(validators=[phone_regex], max_length=14, blank=False, null=False, unique=True)
     is_active = models.BooleanField(default=True)
+    is_approved_provider = models.BooleanField(default=False, help_text="True if this service provider application has been reviewed by ardy admin.")
 
     # Default users fields.
     first_name = models.CharField(max_length=50, blank=True, null=True)
@@ -130,6 +131,7 @@ class SubscriptionPlan(models.Model):
     user_type = models.CharField(max_length=50, choices=[('1', 'Customer'), ('2', 'Service Provider')])
     price = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
     features = models.JSONField(default=dict, help_text="JSON structure for features")
+    display_priority = models.IntegerField(default=100, help_text="Lower numbers show higher in listings (ex: 10=VIP, 20=Premium, 100=Free)")
     is_active = models.BooleanField(default=True)
     is_default_free_plan = models.BooleanField(default=False, unique=True, null=True)
 

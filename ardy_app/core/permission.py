@@ -7,27 +7,45 @@ class IsCustomer(BasePermission):
     
 class IsConsultant(BasePermission):
     def has_permission(self, request, view):
-        return request.user.is_authenticated and request.user.user_type == "Consultant"
+        return (request.user and 
+                request.user.is_authenticated and
+                request.user.user_type == "Consultant" and 
+                request.user.is_approved_provider)
     
 class IsInterior(BasePermission):
     def has_permission(self, request, view):
-        return request.user.is_authenticated and request.user.user_type == "Interior Designer"
+        return (request.user and 
+                request.user.is_authenticated and
+                request.user.user_type == "Interior Design" and 
+                request.user.is_approved_provider)
     
 class IsConstruction(BasePermission):
     def has_permission(self, request, view):
-        return request.user.is_authenticated and request.user.user_type == "Construction"
+        return (request.user and 
+                request.user.is_authenticated and
+                request.user.user_type == "Construction" and 
+                request.user.is_approved_provider)
     
 class IsMaintenance(BasePermission):
     def has_permission(self, request, view):
-        return request.user.is_authenticated and request.user.user_type == "Maintenance"
+        return (request.user and 
+                request.user.is_authenticated and
+                request.user.user_type == "Maintenance" and 
+                request.user.is_approved_provider)
     
 class IsSmartHome(BasePermission):
     def has_permission(self, request, view):
-        return request.user.is_authenticated and request.user.user_type == "Smart_Home"
+        return (request.user and 
+                request.user.is_authenticated and
+                request.user.user_type == "Smart_Home" and 
+                request.user.is_approved_provider)
     
 class IsServiceProvider(BasePermission):
     def has_permission(self, request, view):
-        return request.user.is_authenticated and request.user.user_type in SERVICE_PROVIDER_USER_TYPES_REQUIRING_APPROVAL
+        return (request.user and 
+                request.user.is_authenticated and 
+                request.user.user_type in SERVICE_PROVIDER_USER_TYPES_REQUIRING_APPROVAL and
+                request.user.is_approved_provider)
     
 
 class IsPremiumUser(BasePermission):

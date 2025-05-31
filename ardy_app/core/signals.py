@@ -195,8 +195,11 @@ def handle_new_user_created(sender, instance, created, **kwargs):
                 admin_emails = User.objects.filter(user_type='Admin', is_staff=True, is_active=True).values_list('email', flat=True)
                 if admin_emails:
                     send_mail(
-                        subject='New Service Provider Registration for Approval',
-                        message=f"User {instance.username} ({instance.email}) has registered as a {instance.get_user_type_display()} and may need approval.",
+                        subject='New Service Provider Registration for Review & Approval',
+                        message=f"User {instance.username} ({instance.email})\n" 
+                        f"Registered as: {instance.get_user_type_display()}\n"
+                        f"This provider is currently NOT APPROVED and requires your review and approval."
+                        f"\n\nPlease log in to the Ardy-App to review and approve this user.",
                         from_email=settings.DEFAULT_FROM_EMAIL,
                         recipient_list=list(admin_emails),
                         fail_silently=False,
