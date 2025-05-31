@@ -49,11 +49,11 @@ class CustomerProfileInline(admin.StackedInline): # Or admin.TabularInline for m
     fk_name = 'user'
     fields = ('budget', 'property_status', 'project_details', 'attachments') # Explicitly list fields
 
-class ConsultantProfileInline(admin.StackedInline): model = ConsultantProfile; can_delete=False; fk_name='user'; fields=('company_name', 'expertise', 'experience', 'portfolio', 'introduction', 'projects_completed', 'company_profile_doc', 'services_offered'); filter_horizontal=('services_offered',) # etc.
-class InteriorProfileInline(admin.StackedInline): model = InteriorProfile; can_delete=False; fk_name='user'; fields=('company_name', 'expertise', 'experience', 'portfolio', 'introduction', 'projects_completed', 'company_profile_doc', 'services_offered'); filter_horizontal=('services_offered',)
-class ConstructionProfileInline(admin.StackedInline): model = ConstructionProfile; can_delete=False; fk_name='user'; fields=('company_name', 'expertise', 'experience', 'portfolio', 'introduction', 'projects_completed', 'company_profile_doc', 'services_offered'); filter_horizontal=('services_offered',)
-class MaintenanceProfileInline(admin.StackedInline): model = MaintenanceProfile; can_delete=False; fk_name='user'; fields=('company_name', 'expertise', 'experience', 'portfolio', 'introduction', 'projects_completed', 'company_profile_doc', 'services_offered'); filter_horizontal=('services_offered',)
-class SmartHomeProfileInline(admin.StackedInline): model = SmartHomeProfile; can_delete=False; fk_name='user'; fields=('company_name', 'expertise', 'experience', 'portfolio', 'introduction', 'projects_completed', 'company_profile_doc', 'services_offered'); filter_horizontal=('services_offered',)
+class ConsultantProfileInline(admin.StackedInline): model = ConsultantProfile; can_delete=False; fk_name='user'; fields=('company_name', 'expertise', 'experience', 'portfolio', 'introduction', 'projects_completed', 'company_profile', 'services_offered'); filter_horizontal=('services_offered',) # etc.
+class InteriorProfileInline(admin.StackedInline): model = InteriorProfile; can_delete=False; fk_name='user'; fields=('company_name', 'expertise', 'experience', 'portfolio', 'introduction', 'projects_completed', 'company_profile', 'services_offered'); filter_horizontal=('services_offered',)
+class ConstructionProfileInline(admin.StackedInline): model = ConstructionProfile; can_delete=False; fk_name='user'; fields=('company_name', 'expertise', 'experience', 'portfolio', 'introduction', 'projects_completed', 'company_profile', 'services_offered'); filter_horizontal=('services_offered',)
+class MaintenanceProfileInline(admin.StackedInline): model = MaintenanceProfile; can_delete=False; fk_name='user'; fields=('company_name', 'expertise', 'experience', 'portfolio', 'introduction', 'projects_completed', 'company_profile', 'services_offered'); filter_horizontal=('services_offered',)
+class SmartHomeProfileInline(admin.StackedInline): model = SmartHomeProfile; can_delete=False; fk_name='user'; fields=('company_name', 'expertise', 'experience', 'portfolio', 'introduction', 'projects_completed', 'company_profile', 'services_offered'); filter_horizontal=('services_offered',)
 
 
 class CompanyProfileInline(admin.StackedInline):
@@ -91,6 +91,11 @@ class UserAdmin(BaseUserAdmin):
     def get_queryset(self, request):
         qs = super().get_queryset(request)
         return qs
+    
+    def get_inlines(self, request, obj=None):
+        if obj is None:
+            return [CompanyProfileInline]
+        return self.inlines
     
     def approve_selected_providers(self, request, queryset):
         providers_to_approve = queryset.filter(user_type__in=[st[0] for st in SERVICE_PROVIDER_USER_TYPES_REQUIRING_APPROVAL])

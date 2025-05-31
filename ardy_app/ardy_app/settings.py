@@ -192,6 +192,18 @@ CORS_ALLOWED_ORIGINS = [
 
 DEFAULT_FROM_EMAIL = 'noreply@ardy-app.com'
 
+if DEBUG:
+    EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+else:
+    # Configure your actual SMTP settings for production here
+    EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+    EMAIL_HOST = 'your_smtp_host'
+    EMAIL_PORT = 587 # Or 465, or 25
+    EMAIL_USE_TLS = True # Or False
+    EMAIL_HOST_USER = 'your_email_username'
+    EMAIL_HOST_PASSWORD = 'your_email_password'
+    DEFAULT_FROM_EMAIL = 'noreply@ardy-app.com'
+
 
 #print("--- Attempting to import CoreConfig directly in settings.py ---", file=sys.stderr)
 #try:

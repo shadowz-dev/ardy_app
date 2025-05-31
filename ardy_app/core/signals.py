@@ -120,7 +120,7 @@ def handle_new_user_created(sender, instance, created, **kwargs):
 
         # 1. Create Referral Code
         try:
-            free_plan = SubscriptionPlan.objects.get(is_defailt_free_plan=True)
+            free_plan = SubscriptionPlan.objects.get(is_default_free_plan=True)
             if free_plan:
                 UserSubscription.objects.create(
                     user=instance,
